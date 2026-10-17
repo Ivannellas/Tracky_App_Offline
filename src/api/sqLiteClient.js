@@ -19,7 +19,8 @@ export function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       type TEXT CHECK(type IN ('income', 'expense')) NOT NULL,
-      color TEXT DEFAULT '#A78BFA'
+      color TEXT DEFAULT '#A78BFA',
+      budget_limit REAL DEFAULT 0.0
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
@@ -34,7 +35,6 @@ export function initDatabase() {
       FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
     );
 
-    -- ADDED: Recurring bills table schema
     CREATE TABLE IF NOT EXISTS recurring_bills (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -47,6 +47,17 @@ export function initDatabase() {
     );
   `);
 
+  // Auto-migration for existing installations: check if budget_limit column exists
+  try {
+    const tableInfo = db.getAllSync("PRAGMA table_info(categories)");
+    const hasBudgetColumn = tableInfo.some((col) => col.name === 'budget_limit');
+    if (!hasBudgetColumn) {
+      db.execSync("ALTER TABLE categories ADD COLUMN budget_limit REAL DEFAULT 0.0;");
+    }
+  } catch (error) {
+    console.log("Migration check for budget_limit:", error);
+  }
+
   // Seed default accounts if table is completely empty
   const accountCheck = db.getFirstSync('SELECT COUNT(*) as count FROM accounts');
   if (accountCheck.count === 0) {
@@ -57,9 +68,9 @@ export function initDatabase() {
   // Seed default categories if table is completely empty
   const categoryCheck = db.getFirstSync('SELECT COUNT(*) as count FROM categories');
   if (categoryCheck.count === 0) {
-    db.runSync(`INSERT INTO categories (name, type, color) VALUES ('Food & Dining', 'expense', '#EF4444')`);
-    db.runSync(`INSERT INTO categories (name, type, color) VALUES ('Transportation', 'expense', '#F59E0B')`);
-    db.runSync(`INSERT INTO categories (name, type, color) VALUES ('Salary', 'income', '#10B981')`);
+    db.runSync(`INSERT INTO categories (name, type, color, budget_limit) VALUES ('Food & Dining', 'expense', '#EF4444', 0.0)`);
+    db.runSync(`INSERT INTO categories (name, type, color, budget_limit) VALUES ('Transportation', 'expense', '#F59E0B', 0.0)`);
+    db.runSync(`INSERT INTO categories (name, type, color, budget_limit) VALUES ('Salary', 'income', '#10B981', 0.0)`);
   }
 }
 

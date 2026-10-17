@@ -3,7 +3,7 @@ import db from './sqLiteClient';
 // Get spending breakdown grouped by category for a specific month (YYYY-MM)
 export function getCategorySpendingForMonth(selectedMonth) {
   return db.getAllSync(`
-    SELECT c.name as category_name, c.color, c.type, SUM(t.amount) as total
+    SELECT c.id as category_id, c.name as category_name, c.color, c.type, c.budget_limit, SUM(t.amount) as total
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
     WHERE t.date LIKE ?

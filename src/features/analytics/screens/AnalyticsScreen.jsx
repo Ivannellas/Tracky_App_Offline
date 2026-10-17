@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategorySpendingForMonth, getMonthlyTotals } from '../../../api/analyticsRepo';
+import { updateCategoryBudget } from '../../../api/categoriesRepo';
 import { ThemeContext } from '../../../context/ThemeContext'; // <-- Import Theme Context
 
 export default function AnalyticsScreen() {
@@ -10,6 +11,11 @@ export default function AnalyticsScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [breakdown, setBreakdown] = useState([]);
   const [totals, setTotals] = useState({ income: 0, expense: 0 });
+
+  // Budget Editing State
+  const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [budgetInput, setBudgetInput] = useState('');
 
   const monthString = currentDate.toISOString().slice(0, 7); // 'YYYY-MM'
   const monthLabel = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -29,6 +35,20 @@ export default function AnalyticsScreen() {
     setCurrentDate(newDate);
   };
 
+  const handleOpenBudgetModal = (item) => {
+    setSelectedCategory(item);
+    setBudgetInput(item.budget_limit ? item.budget_limit.toString() : '');
+    setBudgetModalVisible(true);
+  };
+
+  const handleSaveBudget = () => {
+    if (!selectedCategory) return;
+    const limitVal = parseFloat(budgetInput) || 0;
+    updateCategoryBudget(selectedCategory.category_id, limitVal);
+    setBudgetModalVisible(false);
+    loadAnalytics();
+  };
+
   const totalExpense = totals.expense;
   const totalIncome = totals.income;
   const netSavings = totalIncome - totalExpense;
@@ -40,7 +60,7 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <Text style={[styles.title, { color: theme.text }]}>Financial Analytics</Text>
+      <Text style={[styles.title, { color: theme.text }]}>Financial Analytics & Budgets</Text>
 
       {/* Month Switcher Header */}
       <View style={[styles.monthPicker, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
@@ -87,8 +107,8 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* Category Spending Breakdown Chart */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Spending by Category</Text>
+        {/* Category Spending Breakdown Chart & Budgets */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Category Budgets & Spending</Text>
 
         {breakdown.filter(i => i.type === 'expense').length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
@@ -98,7 +118,26 @@ export default function AnalyticsScreen() {
           breakdown
             .filter(item => item.type === 'expense')
             .map((item, index) => {
-              const catPercent = totalExpense > 0 ? (item.total / totalExpense) * 100 : 0;
+              const spent = item.total || 0;
+              const budgetLimit = item.budget_limit || 0;
+              const budgetRatio = budgetLimit > 0 ? (spent / budgetLimit) * 100 : 0;
+
+              let barColor = item.color || '#EF4444';
+              let alertText = '';
+              if (budgetLimit > 0) {
+                if (budgetRatio >= 100) {
+                  barColor = '#EF4444'; // Red: Over budget
+                  alertText = `⚠️ Over budget by ₱${(spent - budgetLimit).toLocaleString()}`;
+                } else if (budgetRatio >= 80) {
+                  barColor = '#F59E0B'; // Orange: Nearing limit (80%+)
+                  alertText = `⚠️ Approaching limit (${budgetRatio.toFixed(0)}%)`;
+                } else {
+                  alertText = `₱${(budgetLimit - spent).toLocaleString()} remaining`;
+                }
+              } else {
+                alertText = 'No monthly budget set';
+              }
+
               return (
                 <View key={index} style={[styles.categoryCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                   <View style={styles.rowBetween}>
@@ -106,8 +145,19 @@ export default function AnalyticsScreen() {
                       <View style={[styles.colorDot, { backgroundColor: item.color || '#EF4444' }]} />
                       <Text style={[styles.catName, { color: theme.text }]}>{item.category_name}</Text>
                     </View>
+                    <TouchableOpacity onPress={() => handleOpenBudgetModal(item)} style={styles.budgetBtn}>
+                      <Text style={[styles.budgetBtnText, { color: theme.primary }]}>
+                        {budgetLimit > 0 ? `Budget: ₱${budgetLimit.toLocaleString()}` : '+ Set Budget'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.spendingRow}>
                     <Text style={[styles.catAmount, { color: theme.text }]}>
-                      ₱{item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ₱{spent.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </Text>
+                    <Text style={[styles.budgetSubText, { color: budgetRatio >= 100 ? '#EF4444' : budgetRatio >= 80 ? '#F59E0B' : theme.subText }]}>
+                      {alertText}
                     </Text>
                   </View>
 
@@ -116,17 +166,47 @@ export default function AnalyticsScreen() {
                     <View 
                       style={[
                         styles.progressFill, 
-                        { width: `${Math.min(catPercent, 100)}%`, backgroundColor: item.color || '#EF4444' }
+                        { 
+                          width: `${Math.min(budgetLimit > 0 ? budgetRatio : (totalExpense > 0 ? (spent / totalExpense) * 100 : 0), 100)}%`, 
+                          backgroundColor: barColor 
+                        }
                       ]} 
                     />
                   </View>
-
-                  <Text style={[styles.percentText, { color: theme.subText }]}>{catPercent.toFixed(1)}% of monthly expenses</Text>
                 </View>
               );
             })
         )}
       </ScrollView>
+
+      {/* Set Budget Modal */}
+      <Modal visible={budgetModalVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.cardBg }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Set Budget for {selectedCategory?.category_name}
+            </Text>
+            <Text style={[styles.label, { color: theme.subText }]}>Monthly Spending Cap (₱)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+              placeholder="e.g. 5000"
+              placeholderTextColor={theme.subText}
+              keyboardType="numeric"
+              value={budgetInput}
+              onChangeText={setBudgetInput}
+            />
+
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={() => setBudgetModalVisible(false)}>
+                <Text style={[styles.cancelBtnText, { color: theme.subText }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSaveBudget}>
+                <Text style={styles.saveBtnText}>Save Budget</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -163,14 +243,27 @@ const styles = StyleSheet.create({
   netValue: { fontSize: 16, fontWeight: 'bold' },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 12 },
   categoryCard: { padding: 14, borderRadius: 12, marginBottom: 10, borderWidth: 1 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   categoryHeader: { flexDirection: 'row', alignItems: 'center' },
   colorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
   catName: { fontSize: 14, fontWeight: '600' },
-  catAmount: { fontSize: 14, fontWeight: 'bold' },
-  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 4 },
+  budgetBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  budgetBtnText: { fontSize: 12, fontWeight: '600' },
+  spendingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  catAmount: { fontSize: 15, fontWeight: 'bold' },
+  budgetSubText: { fontSize: 11, fontWeight: '600' },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 2 },
   progressFill: { height: '100%', borderRadius: 3 },
-  percentText: { fontSize: 11 },
   emptyCard: { padding: 24, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
   emptyText: {},
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContainer: { width: '100%', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#334155' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
+  label: { fontSize: 13, marginBottom: 6 },
+  input: { padding: 12, borderRadius: 10, fontSize: 16, borderWidth: 1, marginBottom: 20 },
+  modalActionRow: { flexDirection: 'row', gap: 10 },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
+  cancelBtnText: { fontWeight: '600' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 10, alignItems: 'center' },
+  saveBtnText: { color: '#FFFFFF', fontWeight: 'bold' },
 });

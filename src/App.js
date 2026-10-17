@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { initDatabase } from './api/sqLiteClient';
+import { checkForUpdates } from './api/updateChecker'; // <-- 1. Import the update checker
 import DashboardScreen from './features/dashboard/screens/DashboardScreen';
 import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen';
 import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen';
 import SettingsScreen from './features/settings/screens/SettingsScreen';
-import { ThemeProvider, ThemeContext } from './context/ThemeContext'; // Import Theme Provider and Context
+import { ThemeProvider, ThemeContext } from './context/ThemeContext';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -38,7 +39,16 @@ export default function App() {
 // Internal component to consume Theme Context
 function MainAppContainer() {
   const [currentScreen, setCurrentScreen] = useState('dashboard');
-  const { theme } = React.useContext(ThemeContext); // Access theme colors
+  const { theme } = React.useContext(ThemeContext);
+
+  // <-- 2. Trigger background update check 3 seconds after app boots up
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkForUpdates(false); // false = silent background check (only alerts if a new version is found)
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>

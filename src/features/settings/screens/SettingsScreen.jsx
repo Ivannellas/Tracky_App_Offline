@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { exportDatabaseBackup } from '../../../api/backupRepo';
+import { exportDatabaseBackup, importDatabaseBackup } from '../../../api/backupRepo';
 import CategoryManagerModal from '../../categories/components/CategoryManagerModal';
 import { ThemeContext } from '../../../context/ThemeContext';
 
@@ -10,7 +10,35 @@ export default function SettingsScreen() {
   const { theme, themeMode, changeTheme } = useContext(ThemeContext);
 
   const handleExport = async () => {
-    await exportDatabaseBackup();
+    try {
+      await exportDatabaseBackup();
+    } catch (error) {
+      Alert.alert('Export Failed', 'An error occurred while creating your backup file.');
+    }
+  };
+
+  const handleImport = async () => {
+    Alert.alert(
+      'Restore Backup',
+      'Restoring from a backup file will replace all existing transactions, categories, and wallet balances. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore Data',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await importDatabaseBackup();
+              if (success) {
+                Alert.alert('Success', 'Your Trackly data has been successfully restored!');
+              }
+            } catch (error) {
+              Alert.alert('Import Failed', 'The selected file is not a valid Trackly JSON backup.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -80,8 +108,9 @@ export default function SettingsScreen() {
 
       {/* --- DATA BACKUP SECTION --- */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Data Backup</Text>
+        <Text style={styles.sectionLabel}>Data Backup & Restore</Text>
         
+        {/* Export Button */}
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={handleExport}
@@ -90,6 +119,19 @@ export default function SettingsScreen() {
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: theme.text }]}>Export Backup (.json)</Text>
             <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Save a secure copy of your local SQLite records</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+        </TouchableOpacity>
+
+        {/* Import Button */}
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
+          onPress={handleImport}
+        >
+          <Ionicons name="cloud-upload-outline" size={20} color="#3B82F6" />
+          <View style={styles.actionTextContainer}>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>Import Backup (.json)</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Restore records from a previously exported backup file</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={theme.subText} />
         </TouchableOpacity>
