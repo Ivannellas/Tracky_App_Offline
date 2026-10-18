@@ -1,17 +1,19 @@
-import * as FileSystem from 'expo-file-system/legacy'; // <-- UPDATED to legacy path
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
-import db from './sqLiteClient';
+import { getDb } from './sqLiteClient';
 
 // Export all local database tables into a JSON file and open share sheet
 export async function exportDatabaseBackup() {
   try {
+    const db = getDb();
     const accounts = db.getAllSync('SELECT * FROM accounts');
     const categories = db.getAllSync('SELECT * FROM categories');
     const transactions = db.getAllSync('SELECT * FROM transactions');
     const recurringBills = db.getAllSync('SELECT * FROM recurring_bills');
 
     const backupData = {
+      app: 'Trackly',
       version: 1,
       exportedAt: new Date().toISOString(),
       data: {
@@ -33,13 +35,15 @@ export async function exportDatabaseBackup() {
       await Sharing.shareAsync(fileUri, {
         dialogTitle: 'Backup Trackly Data',
         mimeType: 'application/json',
+        UTI: 'public.json',
       });
+      return true;
     } else {
-      alert('Sharing is not available on this device.');
+      throw new Error('Sharing is not available on this device.');
     }
   } catch (error) {
     console.error('Failed to export backup:', error);
-    alert('Export failed. Check console for details.');
+    throw error;
   }
 }
 
@@ -47,7 +51,7 @@ export async function exportDatabaseBackup() {
 export async function importDatabaseBackup() {
   try {
     const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/json',
+      type: ['application/json', '*/*'],
       copyToCacheDirectory: true,
     });
 
@@ -55,20 +59,31 @@ export async function importDatabaseBackup() {
       return false;
     }
 
-    const fileUri = result.assets[0].uri;
-    const fileContent = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
+    const asset = result.assets[0];
+    
+    // Use fetch to reliably read the file content across all Android/iOS storage scopes
+    const response = await fetch(asset.uri);
+    const fileText = await response.text();
 
-    const parsedBackup = JSON.parse(fileContent);
+    let parsedBackup;
+    try {
+      parsedBackup = JSON.parse(fileText);
+    } catch (e) {
+      throw new Error('Selected file is not valid JSON.');
+    }
 
-    if (!parsedBackup || !parsedBackup.data) {
-      throw new Error('Invalid backup file structure.');
+    // Validate structure
+    if (!parsedBackup || !parsedBackup.app || parsedBackup.app !== 'Trackly' || !parsedBackup.data) {
+      throw new Error('The selected file is not a valid Trackly JSON backup.');
     }
 
     const { accounts, categories, transactions, recurring_bills } = parsedBackup.data;
+    const db = getDb();
 
     db.withTransactionSync(() => {
+      // Temporarily disable foreign key restrictions during restore
+      db.execSync('PRAGMA foreign_keys = OFF;');
+
       db.runSync('DELETE FROM transactions');
       db.runSync('DELETE FROM recurring_bills');
       db.runSync('DELETE FROM accounts');
@@ -109,6 +124,9 @@ export async function importDatabaseBackup() {
           );
         }
       }
+
+      // Re-enable foreign key enforcement
+      db.execSync('PRAGMA foreign_keys = ON;');
     });
 
     return true;

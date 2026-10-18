@@ -137,7 +137,7 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
           <Text style={styles.label}>Note (Optional)</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. Lunch with team, Grocery run"
+            placeholder="Lunch with team, Grocery run"
             placeholderTextColor="#64748B"
             value={note}
             onChangeText={setNote}

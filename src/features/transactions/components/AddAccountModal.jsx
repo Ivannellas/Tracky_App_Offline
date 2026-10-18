@@ -43,7 +43,7 @@ export default function AddAccountModal({ visible, onClose, onSuccess }) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Wallet Name (e.g. Maya, Cash, GCash)</Text>
+          <Text style={styles.label}>Wallet Name (Maya, Cash, GCash)</Text>
           <TextInput
             style={styles.input}
             placeholder="Wallet Name"

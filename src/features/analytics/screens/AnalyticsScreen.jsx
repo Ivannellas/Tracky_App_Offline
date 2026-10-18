@@ -189,7 +189,7 @@ export default function AnalyticsScreen() {
             <Text style={[styles.label, { color: theme.subText }]}>Monthly Spending Cap (₱)</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-              placeholder="e.g. 5000"
+              placeholder="0.00"
               placeholderTextColor={theme.subText}
               keyboardType="numeric"
               value={budgetInput}

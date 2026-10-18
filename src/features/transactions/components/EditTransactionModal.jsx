@@ -114,7 +114,7 @@ export default function EditTransactionModal({ visible, transaction, onClose, on
             <Text style={styles.label}>Note (Optional)</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Grocery run, lunch"
+              placeholder="Grocery run, lunch"
               placeholderTextColor="#64748B"
               value={note}
               onChangeText={setNote}

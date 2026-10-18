@@ -3,6 +3,10 @@ import * as SQLite from 'expo-sqlite';
 // Open local SQLite database file
 const db = SQLite.openDatabaseSync('trackly_v2.db');
 
+export function getDb() {
+  return db;
+}
+
 export function initDatabase() {
   db.execSync(`
     PRAGMA journal_mode = WAL;
@@ -47,7 +51,7 @@ export function initDatabase() {
     );
   `);
 
-  // Auto-migration for existing installations: check if budget_limit column exists
+  // Auto-migration for existing installations
   try {
     const tableInfo = db.getAllSync("PRAGMA table_info(categories)");
     const hasBudgetColumn = tableInfo.some((col) => col.name === 'budget_limit');
@@ -58,14 +62,14 @@ export function initDatabase() {
     console.log("Migration check for budget_limit:", error);
   }
 
-  // Seed default accounts if table is completely empty
+  // Seed default accounts if table is empty
   const accountCheck = db.getFirstSync('SELECT COUNT(*) as count FROM accounts');
   if (accountCheck.count === 0) {
     db.runSync(`INSERT INTO accounts (name, balance, color) VALUES ('Cash', 0.0, '#10B981')`);
     db.runSync(`INSERT INTO accounts (name, balance, color) VALUES ('GCash', 0.0, '#3B82F6')`);
   }
 
-  // Seed default categories if table is completely empty
+  // Seed default categories if table is empty
   const categoryCheck = db.getFirstSync('SELECT COUNT(*) as count FROM categories');
   if (categoryCheck.count === 0) {
     db.runSync(`INSERT INTO categories (name, type, color, budget_limit) VALUES ('Food & Dining', 'expense', '#EF4444', 0.0)`);

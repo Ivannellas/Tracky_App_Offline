@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { exportDatabaseBackup, importDatabaseBackup } from '../../../api/backupRepo';
+import { deleteAllTransactions } from '../../../api/transactionsRepo';
 import CategoryManagerModal from '../../categories/components/CategoryManagerModal';
 import { ThemeContext } from '../../../context/ThemeContext';
 import { AuthContext } from '../../../context/AuthContext';
@@ -61,6 +62,28 @@ export default function SettingsScreen() {
     } else {
       lockApp(); // Triggers the LockScreen in creation mode
     }
+  };
+
+  const handleDeleteAllTransactions = () => {
+    Alert.alert(
+      'Delete All Transactions?',
+      'This will permanently wipe all recorded transactions. Your wallets and categories will remain intact, but transaction history will be cleared.\n\nAre you sure you want to continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: () => {
+            try {
+              deleteAllTransactions();
+              Alert.alert('Cleared', 'All transaction history has been permanently deleted.');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to clear transactions. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -164,7 +187,7 @@ export default function SettingsScreen() {
           <Ionicons name="cloud-download-outline" size={20} color="#10B981" />
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: theme.text }]}>Export Backup (.json)</Text>
-            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Save a secure copy of your local SQLite records</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Save a secure copy of your current data or records</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={theme.subText} />
         </TouchableOpacity>
@@ -182,11 +205,28 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* --- DANGER ZONE SECTION --- */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, { color: '#EF4444' }]}>Danger Zone</Text>
+        
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.dangerCard]} 
+          onPress={handleDeleteAllTransactions}
+        >
+          <Ionicons name="trash-bin-outline" size={20} color="#EF4444" />
+          <View style={styles.actionTextContainer}>
+            <Text style={[styles.actionTitle, { color: '#EF4444' }]}>Delete All Transactions</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Clear transaction history while preserving wallets & categories</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+
       <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
         <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" style={{ marginBottom: 8 }} />
         <Text style={[styles.infoTitle, { color: theme.text }]}>100% Offline & Private</Text>
         <Text style={[styles.infoText, { color: theme.subText }]}>
-          Your financial data stays securely on this device inside a local SQLite file. No cloud servers, no tracking, and zero internet required.
+          Your financial data stays securely on this device inside a local storage. No cloud servers, no tracking, and zero internet required.
         </Text>
       </View>
 
@@ -213,6 +253,7 @@ const styles = StyleSheet.create({
   themeText: { fontSize: 13, fontWeight: '600' },
   activeThemeText: { color: '#FFFFFF', fontWeight: 'bold' },
   actionButton: { padding: 16, borderRadius: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, marginBottom: 8 },
+  dangerCard: { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.3)' },
   actionTextContainer: { flex: 1, marginLeft: 14 },
   actionTitle: { fontSize: 16, fontWeight: '600' },
   actionSubtitle: { fontSize: 12, marginTop: 2 },

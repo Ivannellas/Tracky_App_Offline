@@ -21,6 +21,10 @@ export default function DashboardScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
 
+  // Limit State
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const TRANSACTION_LIMIT = 5;
+
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [accountModalVisible, setAccountModalVisible] = useState(false);
@@ -117,6 +121,12 @@ export default function DashboardScreen() {
     return matchesType && matchesSearch;
   });
 
+  // Apply display limit when search/filter is not being actively searched
+  const isSearchingOrFiltering = searchQuery.trim().length > 0 || filterType !== 'all';
+  const displayedTransactions = (showAllTransactions || isSearchingOrFiltering)
+    ? filteredTransactions
+    : filteredTransactions.slice(0, TRANSACTION_LIMIT);
+
   return (
     <View style={[styles.mainContainer, { backgroundColor: theme.bg }]}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -141,7 +151,6 @@ export default function DashboardScreen() {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsRow}>
           {accounts.map((account) => {
-            // Check if user saved a custom background color for this wallet
             const hasCustomColor = !!account.color;
             const cardBgColor = account.color || theme.cardBg;
             const textColor = hasCustomColor ? '#FFFFFF' : theme.text;
@@ -206,16 +215,25 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        {/* Recent Activity */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
+        {/* Recent Activity Header with Limit Toggle */}
+        <View style={styles.rowBetween}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
+          {filteredTransactions.length > TRANSACTION_LIMIT && !isSearchingOrFiltering && (
+            <TouchableOpacity onPress={() => setShowAllTransactions(!showAllTransactions)}>
+              <Text style={[styles.seeAllText, { color: theme.primary }]}>
+                {showAllTransactions ? 'Show Less' : `View All (${filteredTransactions.length})`}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Swipe any card left to Copy, Edit, or Delete</Text>
         
-        {filteredTransactions.length === 0 ? (
+        {displayedTransactions.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
             <Text style={[styles.emptyText, { color: theme.subText }]}>No matching transactions found.</Text>
           </View>
         ) : (
-          filteredTransactions.map((item) => (
+          displayedTransactions.map((item) => (
             <SwipeableCard 
               key={item.id} 
               item={item} 
@@ -281,6 +299,7 @@ const styles = StyleSheet.create({
   summaryAmount: { fontSize: 32, fontWeight: 'bold' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold' },
+  seeAllText: { fontSize: 13, fontWeight: '600' },
   smallAddBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   smallAddText: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
   sectionSubtitle: { fontSize: 12, marginBottom: 12 },

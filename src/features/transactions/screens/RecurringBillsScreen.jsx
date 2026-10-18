@@ -128,7 +128,7 @@ export default function RecurringBillsScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={[styles.label, { color: theme.subText }]}>Bill Name (e.g. Netflix, Rent)</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Bill Name (Netflix, Rent)</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]} 
                 placeholder="Netflix" 

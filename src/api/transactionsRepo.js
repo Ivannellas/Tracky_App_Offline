@@ -27,7 +27,6 @@ export function insertTransaction({ accountId, categoryId, amount, type, note, d
   });
 }
 
-
 export function deleteTransaction(id) {
   db.withTransactionSync(() => {
     // 1. Fetch the transaction details first to know amount, type, and account_id
@@ -66,4 +65,18 @@ export function updateTransaction(id, { account_id, category_id, amount, type, n
       [account_id, category_id, Number(amount), type, note || '', id]
     );
   });
+}
+
+// Delete all transactions from the database safely and reset wallet balances to 0
+export function deleteAllTransactions() {
+  try {
+    db.withTransactionSync(() => {
+      db.execSync('DELETE FROM transactions;');
+      db.execSync('UPDATE accounts SET balance = 0.0;');
+    });
+    return true;
+  } catch (error) {
+    console.error('Failed to delete all transactions:', error);
+    throw error;
+  }
 }
