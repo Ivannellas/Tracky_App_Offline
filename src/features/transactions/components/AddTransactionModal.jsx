@@ -4,7 +4,7 @@ import { getAllAccounts } from '../../../api/accountsRepo';
 import { getCategoriesByType } from '../../../api/categoriesRepo';
 import { insertTransaction } from '../../../api/transactionsRepo';
 
-export default function AddTransactionModal({ visible, onClose, onSuccess }) {
+export default function AddTransactionModal({ visible, initialData, onClose, onSuccess }) {
   const [type, setType] = useState('expense'); // 'expense' or 'income'
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -19,13 +19,30 @@ export default function AddTransactionModal({ visible, onClose, onSuccess }) {
     if (visible) {
       const accts = getAllAccounts();
       setAccounts(accts);
-      if (accts.length > 0) setSelectedAccount(accts[0].id);
 
-      loadCategories('expense');
-      setAmount('');
-      setNote('');
+      if (initialData) {
+        // Pre-fill from duplicated transaction data
+        const txType = initialData.type || 'expense';
+        setType(txType);
+        setAmount(initialData.amount ? initialData.amount.toString() : '');
+        setNote(initialData.note || '');
+        
+        // Select matching account or fallback to first
+        setSelectedAccount(initialData.account_id || (accts.length > 0 ? accts[0].id : null));
+
+        // Load categories for the transaction type and pre-select
+        const cats = getCategoriesByType(txType);
+        setCategories(cats);
+        setSelectedCategory(initialData.category_id || (cats.length > 0 ? cats[0].id : null));
+      } else {
+        // Reset to default blank values for a new transaction
+        if (accts.length > 0) setSelectedAccount(accts[0].id);
+        loadCategories('expense');
+        setAmount('');
+        setNote('');
+      }
     }
-  }, [visible]);
+  }, [visible, initialData]);
 
   const loadCategories = (txType) => {
     setType(txType);
@@ -57,7 +74,9 @@ export default function AddTransactionModal({ visible, onClose, onSuccess }) {
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>New Transaction</Text>
+          <Text style={styles.modalTitle}>
+            {initialData ? 'Duplicate Transaction' : 'New Transaction'}
+          </Text>
 
           {/* Type Selector Tabs */}
           <View style={styles.typeRow}>
@@ -130,7 +149,9 @@ export default function AddTransactionModal({ visible, onClose, onSuccess }) {
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save Transaction</Text>
+              <Text style={styles.saveButtonText}>
+                {initialData ? 'Save Copy' : 'Save Transaction'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

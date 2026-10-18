@@ -3,9 +3,9 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from
 import { Ionicons } from '@expo/vector-icons';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const ACTION_BUTTON_WIDTH = 65;
+const ACTION_BUTTON_WIDTH = 60; 
 
-export default function SwipeableCard({ item, onEdit, onDelete }) {
+export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
   const scrollViewRef = useRef(null);
 
   const handleActionPress = (actionCallback) => {
@@ -21,7 +21,7 @@ export default function SwipeableCard({ item, onEdit, onDelete }) {
         showsHorizontalScrollIndicator={false}
         bounces={false}
         decelerationRate="fast"
-        snapToInterval={ACTION_BUTTON_WIDTH * 2}
+        snapToInterval={ACTION_BUTTON_WIDTH * 3}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
@@ -46,19 +46,30 @@ export default function SwipeableCard({ item, onEdit, onDelete }) {
 
         {/* Revealed Actions */}
         <View style={styles.actionsContainer}>
+          {/* Copy / Duplicate Button */}
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.duplicateBtn]}
+            onPress={() => handleActionPress(onDuplicate)}
+          >
+            <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.actionText}>Copy</Text>
+          </TouchableOpacity>
+
+          {/* Edit Button */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.editBtn]}
             onPress={() => handleActionPress(onEdit)}
           >
-            <Ionicons name="pencil" size={16} color="#FFFFFF" />
+            <Ionicons name="pencil" size={18} color="#FFFFFF" />
             <Text style={styles.actionText}>Edit</Text>
           </TouchableOpacity>
 
+          {/* Delete Button */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.deleteBtn]}
             onPress={() => handleActionPress(onDelete)}
           >
-            <Ionicons name="trash" size={16} color="#FFFFFF" />
+            <Ionicons name="trash" size={18} color="#FFFFFF" />
             <Text style={styles.actionText}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -72,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: 8, 
     borderRadius: 10, 
     overflow: 'hidden',
-    height: 64, // <-- Fixed compact height
+    height: 64,
   },
   scrollView: { 
     backgroundColor: '#1E293B', 
@@ -82,7 +93,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   txCard: {
-    height: 64, // <-- Matches container height
+    height: 64,
     paddingHorizontal: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -98,11 +109,18 @@ const styles = StyleSheet.create({
   actionsContainer: { flexDirection: 'row', height: 64 },
   actionBtn: {
     width: ACTION_BUTTON_WIDTH,
+    height: 64,
     justifyContent: 'center',
-    alignItems: 'center',
-    height: '100%',
+    alignItems: 'center',   
   },
-  editBtn: { backgroundColor: '#3B82F6' },
-  deleteBtn: { backgroundColor: '#EF4444' },
-  actionText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', marginTop: 2 },
+  duplicateBtn: { backgroundColor: '#8B5CF6' },
+  editBtn: { backgroundColor: '#3B82F6' },     
+  deleteBtn: { backgroundColor: '#EF4444' },   
+  actionText: { 
+    color: '#FFFFFF', 
+    fontSize: 10, 
+    fontWeight: 'bold', 
+    marginTop: 3, 
+    textAlign: 'center' 
+  },
 });

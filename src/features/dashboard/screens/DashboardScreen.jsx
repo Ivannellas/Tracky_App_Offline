@@ -8,10 +8,10 @@ import EditTransactionModal from '../../transactions/components/EditTransactionM
 import AddAccountModal from '../../transactions/components/AddAccountModal';
 import EditAccountModal from '../../transactions/components/EditAccountModal';
 import SwipeableCard from '../../transactions/components/SwipeableCard';
-import { ThemeContext } from '../../../context/ThemeContext'; // <-- Import Theme Context
+import { ThemeContext } from '../../../context/ThemeContext';
 
 export default function DashboardScreen() {
-  const { theme } = useContext(ThemeContext); // <-- Access dynamic theme values
+  const { theme } = useContext(ThemeContext);
 
   const [totalBalance, setTotalBalance] = useState(0);
   const [accounts, setAccounts] = useState([]);
@@ -19,7 +19,7 @@ export default function DashboardScreen() {
   
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all', 'income', 'expense'
+  const [filterType, setFilterType] = useState('all');
 
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -28,6 +28,9 @@ export default function DashboardScreen() {
   
   const [selectedTx, setSelectedTx] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  
+  // State for handling transaction duplication data
+  const [selectedTxForDuplicate, setSelectedTxForDuplicate] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -42,6 +45,11 @@ export default function DashboardScreen() {
   const handleEdit = (item) => {
     setSelectedTx(item);
     setEditModalVisible(true);
+  };
+
+  const handleDuplicate = (item) => {
+    setSelectedTxForDuplicate(item);
+    setAddModalVisible(true);
   };
 
   const handleDelete = (item) => {
@@ -100,7 +108,6 @@ export default function DashboardScreen() {
     );
   };
 
-  // Filter and Search Logic
   const filteredTransactions = recentTransactions.filter((item) => {
     const matchesType = filterType === 'all' || item.type === filterType;
     const matchesSearch = 
@@ -133,16 +140,34 @@ export default function DashboardScreen() {
         <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Tap any wallet to Edit or Delete</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsRow}>
-          {accounts.map((account) => (
-            <TouchableOpacity 
-              key={account.id} 
-              style={[styles.accountCard, { backgroundColor: theme.cardBg, borderColor: account.color || theme.border }]}
-              onPress={() => handleAccountPress(account)}
-            >
-              <Text style={[styles.accountName, { color: theme.subText }]}>{account.name}</Text>
-              <Text style={[styles.accountBalance, { color: theme.text }]}>₱{account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
-            </TouchableOpacity>
-          ))}
+          {accounts.map((account) => {
+            // Check if user saved a custom background color for this wallet
+            const hasCustomColor = !!account.color;
+            const cardBgColor = account.color || theme.cardBg;
+            const textColor = hasCustomColor ? '#FFFFFF' : theme.text;
+            const subTextColor = hasCustomColor ? 'rgba(255, 255, 255, 0.8)' : theme.subText;
+
+            return (
+              <TouchableOpacity 
+                key={account.id} 
+                style={[
+                  styles.accountCard, 
+                  { 
+                    backgroundColor: cardBgColor, 
+                    borderColor: hasCustomColor ? cardBgColor : theme.border 
+                  }
+                ]}
+                onPress={() => handleAccountPress(account)}
+              >
+                <Text style={[styles.accountName, { color: subTextColor }]} numberOfLines={1}>
+                  {account.name}
+                </Text>
+                <Text style={[styles.accountBalance, { color: textColor }]}>
+                  ₱{account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Search Bar */}
@@ -183,7 +208,7 @@ export default function DashboardScreen() {
 
         {/* Recent Activity */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
-        <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Swipe any card left to Edit or Delete</Text>
+        <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Swipe any card left to Copy, Edit, or Delete</Text>
         
         {filteredTransactions.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
@@ -196,20 +221,31 @@ export default function DashboardScreen() {
               item={item} 
               onEdit={handleEdit} 
               onDelete={handleDelete} 
+              onDuplicate={handleDuplicate}
             />
           ))
         )}
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary }]} onPress={() => setAddModalVisible(true)}>
+      <TouchableOpacity 
+        style={[styles.fab, { backgroundColor: theme.primary }]} 
+        onPress={() => {
+          setSelectedTxForDuplicate(null);
+          setAddModalVisible(true);
+        }}
+      >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* Modals */}
       <AddTransactionModal 
         visible={addModalVisible} 
-        onClose={() => setAddModalVisible(false)} 
+        initialData={selectedTxForDuplicate}
+        onClose={() => {
+          setAddModalVisible(false);
+          setSelectedTxForDuplicate(null);
+        }} 
         onSuccess={loadDashboardData} 
       />
 

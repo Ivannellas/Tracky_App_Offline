@@ -7,10 +7,24 @@ import { Alert, Platform } from 'react-native';
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/Trackly_App_Offline/main/version.json';
 
 export async function checkForUpdates(isManualCheck = false) {
-  if (Platform.OS !== 'android') return; // APK updates are specific to Android sideloading
+  if (Platform.OS !== 'android') return;
 
   try {
+    // If the placeholder URL is still set, skip checking
+    if (VERSION_CHECK_URL.includes('YOUR_USERNAME')) {
+      if (isManualCheck) {
+        Alert.alert('Configuration Required', 'Please configure your GitHub raw URL in updateChecker.js');
+      }
+      return;
+    }
+
     const response = await fetch(VERSION_CHECK_URL, { cache: 'no-store' });
+
+    // Check if response is HTTP 200 OK
+    if (!response.ok) {
+      throw new Error(`Server returned status ${response.status}`);
+    }
+
     const remoteData = await response.json();
 
     const currentVersionCode = parseInt(Application.nativeBuildVersion || '1', 10);
@@ -30,7 +44,7 @@ export async function checkForUpdates(isManualCheck = false) {
   } catch (error) {
     console.error('Failed to check for updates:', error);
     if (isManualCheck) {
-      alert('Could not check for updates. Please check your internet connection.');
+      alert('Could not check for updates. Please check your internet connection or update URL.');
     }
   }
 }
@@ -38,7 +52,7 @@ export async function checkForUpdates(isManualCheck = false) {
 async function downloadAndInstallApk(apkUrl) {
   try {
     const apkUri = `${FileSystem.documentDirectory}trackly_update.apk`;
-    
+
     const fileInfo = await FileSystem.getInfoAsync(apkUri);
     if (fileInfo.exists) {
       await FileSystem.deleteAsync(apkUri, { idempotent: true });
@@ -53,7 +67,7 @@ async function downloadAndInstallApk(apkUrl) {
     }
 
     const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
-    
+
     await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
       data: contentUri,
       flags: 1, // FLAG_GRANT_READ_URI_PERMISSION

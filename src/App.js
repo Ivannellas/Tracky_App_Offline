@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { initDatabase } from './api/sqLiteClient';
-import { checkForUpdates } from './api/updateChecker'; // <-- 1. Import the update checker
-import DashboardScreen from './features/dashboard/screens/DashboardScreen';
-import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen';
-import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen';
-import SettingsScreen from './features/settings/screens/SettingsScreen';
-import { ThemeProvider, ThemeContext } from './context/ThemeContext';
+import { initDatabase } from './api/sqLiteClient'; 
+import { checkForUpdates } from './api/updateChecker'; 
+import DashboardScreen from './features/dashboard/screens/DashboardScreen'; 
+import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen'; 
+import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen'; 
+import SettingsScreen from './features/settings/screens/SettingsScreen'; 
+import LockScreen from './components/LockScreen'; 
+import { ThemeProvider, ThemeContext } from './context/ThemeContext'; 
+import { AuthProvider, AuthContext } from './context/AuthContext'; 
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -31,28 +33,42 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <MainAppContainer />
+      <AuthProvider>
+        <MainAppContainer />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
 
-// Internal component to consume Theme Context
 function MainAppContainer() {
   const [currentScreen, setCurrentScreen] = useState('dashboard');
-  const { theme } = React.useContext(ThemeContext);
+  const { theme } = useContext(ThemeContext);
+  const { isLocked, isLoadingSecurity } = useContext(AuthContext);
 
-  // <-- 2. Trigger background update check 3 seconds after app boots up
   useEffect(() => {
     const timer = setTimeout(() => {
-      checkForUpdates(false); // false = silent background check (only alerts if a new version is found)
+      checkForUpdates(false);
     }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
 
+  // Show loading indicator while loading PIN & Biometric settings from storage
+  if (isLoadingSecurity) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
+
+  // Show LockScreen when PIN protection is enabled
+  if (isLocked) {
+    return <LockScreen />;
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Active Screen Render */}
       <View style={styles.screenContainer}>
         {currentScreen === 'dashboard' && <DashboardScreen />}
         {currentScreen === 'bills' && <RecurringBillsScreen />}
@@ -60,7 +76,6 @@ function MainAppContainer() {
         {currentScreen === 'settings' && <SettingsScreen />}
       </View>
 
-      {/* 4-Tab Bottom Navigation Bar (Dynamic Styling) */}
       <View style={[styles.navBar, { backgroundColor: theme.cardBg, borderTopColor: theme.border }]}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('dashboard')}>
           <Ionicons 
@@ -119,7 +134,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, 
     paddingVertical: 10,
     paddingBottom: 20,
-    justifyContent: 'space-around'
+    justify: 'space-around'
   },
   navItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navText: { fontSize: 11, marginTop: 4 }

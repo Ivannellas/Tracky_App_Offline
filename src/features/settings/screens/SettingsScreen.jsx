@@ -1,13 +1,16 @@
 import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { exportDatabaseBackup, importDatabaseBackup } from '../../../api/backupRepo';
 import CategoryManagerModal from '../../categories/components/CategoryManagerModal';
 import { ThemeContext } from '../../../context/ThemeContext';
+import { AuthContext } from '../../../context/AuthContext';
 
 export default function SettingsScreen() {
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const { theme, themeMode, changeTheme } = useContext(ThemeContext);
+  const { hasPinSet, lockApp, removePin } = useContext(AuthContext);
 
   const handleExport = async () => {
     try {
@@ -41,9 +44,53 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleTogglePin = () => {
+    if (hasPinSet) {
+      Alert.alert(
+        'Disable App Lock',
+        'Are you sure you want to remove your 4-digit PIN security lock?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable Lock',
+            style: 'destructive',
+            onPress: () => removePin(),
+          },
+        ]
+      );
+    } else {
+      lockApp(); // Triggers the LockScreen in creation mode
+    }
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
       <Text style={[styles.headerTitle, { color: theme.text }]}>Settings & Data</Text>
+
+      {/* --- APP SECURITY SECTION --- */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Security</Text>
+        
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
+          onPress={handleTogglePin}
+        >
+          <Ionicons 
+            name={hasPinSet ? 'lock-closed' : 'lock-open-outline'} 
+            size={20} 
+            color={hasPinSet ? '#8B5CF6' : theme.subText} 
+          />
+          <View style={styles.actionTextContainer}>
+            <Text style={[styles.actionTitle, { color: theme.text }]}>
+              {hasPinSet ? 'Change / Disable PIN Lock' : 'Enable App PIN Lock'}
+            </Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>
+              {hasPinSet ? 'PIN protection is active' : 'Protect your financial data with a 4-digit PIN'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+        </TouchableOpacity>
+      </View>
 
       {/* --- APPEARANCE / THEME SECTION --- */}
       <View style={styles.section}>
@@ -110,7 +157,6 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Data Backup & Restore</Text>
         
-        {/* Export Button */}
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={handleExport}
@@ -123,7 +169,6 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={18} color={theme.subText} />
         </TouchableOpacity>
 
-        {/* Import Button */}
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={handleImport}
@@ -150,12 +195,13 @@ export default function SettingsScreen() {
         visible={isCategoryModalVisible} 
         onClose={() => setIsCategoryModalVisible(false)} 
       />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60 },
+  container: { flex: 1 },
+  content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
   section: { marginBottom: 20 },
   sectionLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', marginBottom: 10, color: '#94A3B8' },
@@ -170,7 +216,7 @@ const styles = StyleSheet.create({
   actionTextContainer: { flex: 1, marginLeft: 14 },
   actionTitle: { fontSize: 16, fontWeight: '600' },
   actionSubtitle: { fontSize: 12, marginTop: 2 },
-  infoCard: { padding: 20, borderRadius: 16, alignItems: 'center', marginTop: 'auto', marginBottom: 30, borderWidth: 1 },
+  infoCard: { padding: 20, borderRadius: 16, alignItems: 'center', marginTop: 10, marginBottom: 30, borderWidth: 1 },
   infoTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
   infoText: { fontSize: 13, textAlign: 'center', lineHeight: 18 }
 });

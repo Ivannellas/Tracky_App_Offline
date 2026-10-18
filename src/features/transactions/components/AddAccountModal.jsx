@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { insertAccount } from '../../../api/accountsRepo';
+
+// Expanded color palette for wallet card fill
+const PALETTE_COLORS = [
+  null,      // Default (Uses dark card background)
+  '#2563EB', // Royal Blue
+  '#059669', // Emerald Green
+  '#7C3AED', // Violet Purple
+  '#D97706', // Amber Gold
+  '#DC2626', // Crimson Red
+  '#DB2777', // Magenta / Pink
+  '#0891B2', // Cyan / Teal
+  '#EA580C', // Orange
+  '#475569', // Slate Gray
+];
 
 export default function AddAccountModal({ visible, onClose, onSuccess }) {
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
-  const [color, setColor] = useState('#3B82F6'); // Default blue
-
-  const colors = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4'];
+  const [color, setColor] = useState('#2563EB'); // Default to Royal Blue
 
   const handleSave = () => {
-    if (!name) return;
-    insertAccount(name, balance || 0, color);
+    if (!name.trim()) return;
+    insertAccount(name.trim(), parseFloat(balance) || 0, color);
     setName('');
     setBalance('');
+    setColor('#2563EB');
     onSuccess();
     onClose();
   };
@@ -30,7 +43,7 @@ export default function AddAccountModal({ visible, onClose, onSuccess }) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Wallet Name (e.g. Maya, Crypto, Savings)</Text>
+          <Text style={styles.label}>Wallet Name (e.g. Maya, Cash, GCash)</Text>
           <TextInput
             style={styles.input}
             placeholder="Wallet Name"
@@ -49,16 +62,32 @@ export default function AddAccountModal({ visible, onClose, onSuccess }) {
             onChangeText={setBalance}
           />
 
-          <Text style={styles.label}>Choose Accent Color</Text>
-          <View style={styles.colorRow}>
-            {colors.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.colorCircle, { backgroundColor: c }, color === c && styles.selectedColor]}
-                onPress={() => setColor(c)}
-              />
-            ))}
-          </View>
+          <Text style={styles.label}>Choose Card Fill Color</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorRow}>
+            {PALETTE_COLORS.map((c, index) => {
+              const isSelected = color === c;
+              const circleBg = c || '#0F172A';
+
+              return (
+                <TouchableOpacity
+                  key={c || `default-${index}`}
+                  style={[
+                    styles.colorCircle,
+                    { backgroundColor: circleBg },
+                    isSelected && styles.selectedColor,
+                  ]}
+                  onPress={() => setColor(c)}
+                >
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                  )}
+                  {!c && !isSelected && (
+                    <Ionicons name="ban-outline" size={14} color="#64748B" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
             <Text style={styles.saveBtnText}>Create Wallet</Text>
@@ -76,9 +105,19 @@ const styles = StyleSheet.create({
   modalTitle: { color: '#F8FAFC', fontSize: 18, fontWeight: 'bold' },
   label: { color: '#94A3B8', fontSize: 13, marginBottom: 6, marginTop: 12 },
   input: { backgroundColor: '#0F172A', color: '#F8FAFC', padding: 12, borderRadius: 10, fontSize: 16, borderWidth: 1, borderColor: '#334155' },
-  colorRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  colorCircle: { width: 32, height: 32, borderRadius: 16 },
-  selectedColor: { borderWidth: 3, borderColor: '#FFFFFF' },
+  colorRow: { flexDirection: 'row', marginTop: 8, paddingVertical: 4 },
+  colorCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    marginRight: 10,
+    justify: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  selectedColor: { borderWidth: 3, borderColor: '#FFFFFF', transform: [{ scale: 1.08 }] },
   saveBtn: { backgroundColor: '#8B5CF6', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 24, marginBottom: 20 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
 });
