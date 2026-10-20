@@ -11,7 +11,7 @@ import SwipeableCard from '../../transactions/components/SwipeableCard';
 import { ThemeContext } from '../../../context/ThemeContext';
 import { formatTransactionDate } from '../../../utils/dateFormatter'; 
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ onOpenCalendar }) {
   const { theme } = useContext(ThemeContext);
 
   const [totalBalance, setTotalBalance] = useState(0);
@@ -131,6 +131,21 @@ export default function DashboardScreen() {
   return (
     <View style={[styles.mainContainer, { backgroundColor: theme.bg }]}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        
+        {/* Top Header Row with App Title & Calendar Action Button */}
+        <View style={styles.appHeader}>
+          <View>
+            <Text style={[styles.appName, { color: theme.text }]}>Trackly</Text>
+            <Text style={[styles.appSubtitle, { color: theme.subText }]}>Overview & Activity</Text>
+          </View>
+          <TouchableOpacity 
+            style={[styles.headerIconButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
+            onPress={onOpenCalendar}
+          >
+            <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Net Worth Summary */}
         <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
           <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Net Balance</Text>
@@ -295,6 +310,27 @@ const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   container: { flex: 1 },
   content: { padding: 20, paddingTop: 60, paddingBottom: 100 },
+  appHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  appName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  appSubtitle: {
+    fontSize: 12,
+  },
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
   summaryCard: { padding: 20, borderRadius: 16, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#8B5CF6', borderWidth: 1 },
   summaryLabel: { fontSize: 14, marginBottom: 4 },
   summaryAmount: { fontSize: 32, fontWeight: 'bold' },

@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { initDatabase } from './api/sqLiteClient'; 
-import { checkForUpdates } from './api/updateChecker'; 
-import DashboardScreen from './features/dashboard/screens/DashboardScreen'; 
-import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen'; 
-import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen'; 
-import SettingsScreen from './features/settings/screens/SettingsScreen'; 
-import LockScreen from './components/LockScreen'; 
-import { ThemeProvider, ThemeContext } from './context/ThemeContext'; 
-import { AuthProvider, AuthContext } from './context/AuthContext'; 
+import { initDatabase } from './api/sqLiteClient';
+import { checkForUpdates } from './api/updateChecker';
+import DashboardScreen from './features/dashboard/screens/DashboardScreen';
+import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen';
+import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen';
+import SettingsScreen from './features/settings/screens/SettingsScreen';
+import LockScreen from './components/LockScreen';
+import { ThemeProvider, ThemeContext } from './context/ThemeContext';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import CalendarScreen from './features/transactions/screens/CalendarScreen';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -53,7 +54,6 @@ function MainAppContainer() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading indicator while loading PIN & Biometric settings from storage
   if (isLoadingSecurity) {
     return (
       <View style={[styles.center, { backgroundColor: theme.bg }]}>
@@ -62,7 +62,6 @@ function MainAppContainer() {
     );
   }
 
-  // Show LockScreen when PIN protection is enabled
   if (isLocked) {
     return <LockScreen />;
   }
@@ -70,12 +69,14 @@ function MainAppContainer() {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={styles.screenContainer}>
-        {currentScreen === 'dashboard' && <DashboardScreen />}
+        {currentScreen === 'dashboard' && <DashboardScreen onOpenCalendar={() => setCurrentScreen('calendar')} />}
+        {currentScreen === 'calendar' && <CalendarScreen onBack={() => setCurrentScreen('dashboard')} />}
         {currentScreen === 'bills' && <RecurringBillsScreen />}
         {currentScreen === 'analytics' && <AnalyticsScreen />}
         {currentScreen === 'settings' && <SettingsScreen />}
       </View>
 
+      {/* Bottom Navigation Bar */}
       <View style={[styles.navBar, { backgroundColor: theme.cardBg, borderTopColor: theme.border }]}>
         <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('dashboard')}>
           <Ionicons 
@@ -129,9 +130,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' },
   screenContainer: { flex: 1 },
-  navBar: { 
-    flexDirection: 'row', 
-    borderTopWidth: 1, 
+  navBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
     paddingVertical: 10,
     paddingBottom: 20,
     justify: 'space-around'
