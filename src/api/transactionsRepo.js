@@ -6,7 +6,7 @@ export function getAllTransactions() {
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
     JOIN accounts a ON t.account_id = a.id
-    ORDER BY t.date DESC
+    ORDER BY datetime(t.date) DESC, t.id DESC
   `);
 }
 

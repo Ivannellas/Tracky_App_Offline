@@ -216,7 +216,7 @@ export default function SettingsScreen() {
           <Ionicons name="trash-bin-outline" size={20} color="#EF4444" />
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: '#EF4444' }]}>Delete All Transactions</Text>
-            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Clear transaction history while preserving wallets & categories</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Clear transaction history (wallets & categories)</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#EF4444" />
         </TouchableOpacity>

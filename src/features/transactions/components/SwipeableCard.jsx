@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatTransactionDate } from '../../../utils/dateFormatter';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const ACTION_BUTTON_WIDTH = 60; 
@@ -12,6 +13,13 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
     scrollViewRef.current?.scrollTo({ x: 0, animated: true });
     actionCallback(item);
   };
+
+  // Build the subtitle string: "Wallet • Note (if exists) • Date, Time"
+  const formattedDate = formatTransactionDate(item.date);
+  const subtitleParts = [item.account_name];
+  if (item.note) subtitleParts.push(item.note);
+  if (formattedDate) subtitleParts.push(formattedDate);
+  const subtitleText = subtitleParts.join(' • ');
 
   return (
     <View style={styles.container}>
@@ -30,7 +38,7 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
           <View style={styles.leftContent}>
             <Text style={styles.txCategory} numberOfLines={1}>{item.category_name}</Text>
             <Text style={styles.txAccount} numberOfLines={1}>
-              {item.account_name} {item.note ? `• ${item.note}` : ''}
+              {subtitleText}
             </Text>
           </View>
           <Text
@@ -114,8 +122,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',   
   },
   duplicateBtn: { backgroundColor: '#8B5CF6' },
-  editBtn: { backgroundColor: '#3B82F6' },     
-  deleteBtn: { backgroundColor: '#EF4444' },   
+  editBtn: { backgroundColor: '#3B82F6' },    
+  deleteBtn: { backgroundColor: '#EF4444' }, 
   actionText: { 
     color: '#FFFFFF', 
     fontSize: 10, 

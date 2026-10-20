@@ -8,10 +8,10 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
   const [type, setType] = useState('expense'); // 'expense' or 'income'
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  
+
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  
+
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -26,7 +26,7 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
         setType(txType);
         setAmount(initialData.amount ? initialData.amount.toString() : '');
         setNote(initialData.note || '');
-        
+
         // Select matching account or fallback to first
         setSelectedAccount(initialData.account_id || (accts.length > 0 ? accts[0].id : null));
 
@@ -55,7 +55,7 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
   const handleSave = () => {
     if (!amount || isNaN(amount) || !selectedAccount || !selectedCategory) return;
 
-    const todayIso = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const currentDateTime = new Date().toISOString();
 
     insertTransaction({
       accountId: selectedAccount,
@@ -63,7 +63,7 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
       amount: parseFloat(amount),
       type: type,
       note: note.trim() || null,
-      date: todayIso
+      date: currentDateTime // Saves exact timestamp (e.g., "2026-10-19T14:32:00.000Z")
     });
 
     onSuccess(); // Refresh dashboard data
@@ -80,14 +80,14 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
 
           {/* Type Selector Tabs */}
           <View style={styles.typeRow}>
-            <TouchableOpacity 
-              style={[styles.typeTab, type === 'expense' && styles.activeExpense]} 
+            <TouchableOpacity
+              style={[styles.typeTab, type === 'expense' && styles.activeExpense]}
               onPress={() => loadCategories('expense')}
             >
               <Text style={[styles.typeTabText, type === 'expense' && styles.activeText]}>Expense</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.typeTab, type === 'income' && styles.activeIncome]} 
+            <TouchableOpacity
+              style={[styles.typeTab, type === 'income' && styles.activeIncome]}
               onPress={() => loadCategories('income')}
             >
               <Text style={[styles.typeTabText, type === 'income' && styles.activeText]}>Income</Text>

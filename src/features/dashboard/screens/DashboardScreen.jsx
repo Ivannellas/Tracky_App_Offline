@@ -9,6 +9,7 @@ import AddAccountModal from '../../transactions/components/AddAccountModal';
 import EditAccountModal from '../../transactions/components/EditAccountModal';
 import SwipeableCard from '../../transactions/components/SwipeableCard';
 import { ThemeContext } from '../../../context/ThemeContext';
+import { formatTransactionDate } from '../../../utils/dateFormatter'; 
 
 export default function DashboardScreen() {
   const { theme } = useContext(ThemeContext);
