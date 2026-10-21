@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   StyleSheet,
   Text,
@@ -17,8 +17,11 @@ import {
   deleteCategory,
   getCategoryTransactionCount,
 } from "../../../api/categoriesRepo";
+import { ThemeContext } from "../../../context/ThemeContext"; // <-- Import Theme Context
 
 export default function CategoryManagerModal({ visible, onClose, onChange }) {
+  const { theme } = useContext(ThemeContext); // <-- Access dynamic theme values
+
   const [categories, setCategories] = useState([]);
   const [activeType, setActiveType] = useState("expense");
 
@@ -60,7 +63,6 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
   };
 
   const handleDelete = (category) => {
-    // Check if category has active transactions inside it
     const txCount = getCategoryTransactionCount(category.id);
 
     let alertTitle = "Delete Category";
@@ -76,7 +78,6 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
         text: "Delete Everything",
         style: "destructive",
         onPress: () => {
-          // Because of ON DELETE CASCADE, this deletes the category and all its transactions completely
           deleteCategory(category.id);
           loadCategories();
           if (onChange) onChange();
@@ -96,16 +97,17 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.overlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+          
           <View style={styles.header}>
-            <Text style={styles.title}>Manage Categories</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Manage Categories</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#94A3B8" />
+              <Ionicons name="close" size={24} color={theme.subText} />
             </TouchableOpacity>
           </View>
 
           {/* Type Selector Tabs */}
-          <View style={styles.typeRow}>
+          <View style={[styles.typeRow, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
             <TouchableOpacity
               style={[
                 styles.typeTab,
@@ -119,6 +121,7 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
               <Text
                 style={[
                   styles.typeText,
+                  { color: theme.subText },
                   activeType === "expense" && styles.whiteText,
                 ]}
               >
@@ -138,6 +141,7 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
               <Text
                 style={[
                   styles.typeText,
+                  { color: theme.subText },
                   activeType === "income" && styles.whiteText,
                 ]}
               >
@@ -147,28 +151,28 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
           </View>
 
           {/* Add / Edit Input Form */}
-          <View style={styles.formContainer}>
-            <Text style={styles.formLabel}>
+          <View style={[styles.formContainer, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+            <Text style={[styles.formLabel, { color: theme.subText }]}>
               {editingCategory
                 ? `Edit "${editingCategory.name}"`
                 : "Add New Category"}
             </Text>
             <View style={styles.inputRow}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.cardBg, color: theme.text, borderColor: theme.border }]}
                 placeholder="Category name..."
-                placeholderTextColor="#64748B"
+                placeholderTextColor={theme.subText}
                 value={name}
                 onChangeText={setName}
               />
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave}>
                 <Text style={styles.saveBtnText}>
                   {editingCategory ? "Update" : "Add"}
                 </Text>
               </TouchableOpacity>
               {editingCategory && (
-                <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: theme.border }]} onPress={resetForm}>
+                  <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancel</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -180,7 +184,7 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
             keyExtractor={(item) => item.id.toString()}
             style={styles.list}
             renderItem={({ item }) => (
-              <View style={styles.categoryItem}>
+              <View style={[styles.categoryItem, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
                 <View style={styles.categoryLeft}>
                   <View
                     style={[
@@ -188,14 +192,14 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
                       { backgroundColor: item.color || "#8B5CF6" },
                     ]}
                   />
-                  <Text style={styles.categoryName}>{item.name}</Text>
+                  <Text style={[styles.categoryName, { color: theme.text }]}>{item.name}</Text>
                 </View>
                 <View style={styles.actions}>
                   <TouchableOpacity
                     style={styles.iconBtn}
                     onPress={() => handleEditPress(item)}
                   >
-                    <Ionicons name="pencil" size={18} color="#8B5CF6" />
+                    <Ionicons name="pencil" size={18} color={theme.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.iconBtn}
@@ -207,6 +211,7 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
               </View>
             )}
           />
+
         </View>
       </View>
     </Modal>
@@ -216,11 +221,10 @@ export default function CategoryManagerModal({ visible, onClose, onChange }) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#1E293B",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -232,13 +236,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  title: { color: "#F8FAFC", fontSize: 18, fontWeight: "bold" },
+  title: { fontSize: 18, fontWeight: "bold" },
   typeRow: {
     flexDirection: "row",
-    backgroundColor: "#0F172A",
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
+    borderWidth: 1,
   },
   typeTab: {
     flex: 1,
@@ -248,16 +252,15 @@ const styles = StyleSheet.create({
   },
   activeExpense: { backgroundColor: "#EF4444" },
   activeIncome: { backgroundColor: "#10B981" },
-  typeText: { color: "#94A3B8", fontWeight: "600", fontSize: 13 },
+  typeText: { fontWeight: "600", fontSize: 13 },
   whiteText: { color: "#FFFFFF" },
   formContainer: {
-    backgroundColor: "#0F172A",
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
   },
   formLabel: {
-    color: "#94A3B8",
     fontSize: 12,
     marginBottom: 8,
     fontWeight: "600",
@@ -265,40 +268,37 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: "row", gap: 8 },
   input: {
     flex: 1,
-    backgroundColor: "#1E293B",
-    color: "#F8FAFC",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
+    borderWidth: 1,
   },
   saveBtn: {
-    backgroundColor: "#8B5CF6",
     paddingHorizontal: 16,
     borderRadius: 8,
     justifyContent: "center",
   },
   saveBtnText: { color: "#FFFFFF", fontWeight: "bold", fontSize: 13 },
   cancelBtn: {
-    backgroundColor: "#334155",
     paddingHorizontal: 12,
     borderRadius: 8,
     justifyContent: "center",
   },
-  cancelBtnText: { color: "#94A3B8", fontSize: 12 },
+  cancelBtnText: { fontSize: 12 },
   list: { marginTop: 8 },
   categoryItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#0F172A",
     padding: 12,
     borderRadius: 10,
     marginBottom: 8,
+    borderWidth: 1,
   },
   categoryLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   colorDot: { width: 12, height: 12, borderRadius: 6 },
-  categoryName: { color: "#F8FAFC", fontSize: 15, fontWeight: "500" },
+  categoryName: { fontSize: 15, fontWeight: "500" },
   actions: { flexDirection: "row", gap: 8 },
   iconBtn: { padding: 6 },
 });
