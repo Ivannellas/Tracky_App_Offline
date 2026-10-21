@@ -9,6 +9,7 @@ export default function CalendarScreen({ onBack }) {
   const { theme } = useContext(ThemeContext);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [markedDates, setMarkedDates] = useState({});
+  const [dayTotals, setDayTotals] = useState({});
   const [dayTransactions, setDayTransactions] = useState([]);
 
   useEffect(() => {
@@ -22,16 +23,25 @@ export default function CalendarScreen({ onBack }) {
   const loadCalendarData = () => {
     try {
       const db = getDb();
-      const results = db.getAllSync(`SELECT date, type FROM transactions`);
+      const results = db.getAllSync(`SELECT date, amount, type FROM transactions`);
       
       const marks = {};
+      const totals = {};
+
       results.forEach((tx) => {
         if (!tx.date) return;
         const dateKey = tx.date.split('T')[0];
+
+        // Track marker dots
         marks[dateKey] = {
           marked: true,
           dotColor: tx.type === 'expense' ? '#EF4444' : '#10B981',
         };
+
+        // Accumulate total expenses per day for the calendar cell view
+        if (tx.type === 'expense') {
+          totals[dateKey] = (totals[dateKey] || 0) + Number(tx.amount);
+        }
       });
 
       marks[selectedDate] = {
@@ -41,6 +51,7 @@ export default function CalendarScreen({ onBack }) {
       };
 
       setMarkedDates(marks);
+      setDayTotals(totals);
     } catch (error) {
       console.log("Error loading calendar markers:", error);
     }
@@ -64,6 +75,15 @@ export default function CalendarScreen({ onBack }) {
     }
   };
 
+  // Compute total spent and earned for the selected date
+  const totalDayExpense = dayTransactions
+    .filter(tx => tx.type === 'expense')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+  const totalDayIncome = dayTransactions
+    .filter(tx => tx.type === 'income')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header Row with Back Option */}
@@ -74,7 +94,7 @@ export default function CalendarScreen({ onBack }) {
         <Text style={[styles.headerTitle, { color: theme.text }]}>Calendar View</Text>
       </View>
 
-      {/* Calendar UI */}
+      {/* Calendar UI with Custom Day Cell Totals */}
       <Calendar
         current={selectedDate}
         onDayPress={(day) => {
@@ -87,6 +107,42 @@ export default function CalendarScreen({ onBack }) {
           }));
         }}
         markedDates={markedDates}
+        dayComponent={({ date, state, marking }) => {
+          const isSelected = marking?.selected;
+          const totalExpense = dayTotals[date.dateString];
+
+          return (
+            <TouchableOpacity
+              onPress={() => {
+                const newDate = date.dateString;
+                setSelectedDate(newDate);
+                setMarkedDates((prev) => ({
+                  ...prev,
+                  [selectedDate]: { ...prev[selectedDate], selected: false },
+                  [newDate]: { ...(prev[newDate] || {}), selected: true, selectedColor: theme.primary }
+                }));
+              }}
+              style={[
+                styles.dayCell,
+                isSelected && { backgroundColor: theme.primary, borderRadius: 8 }
+              ]}
+            >
+              <Text style={[
+                styles.dayNum, 
+                { color: state === 'disabled' ? '#475569' : theme.text },
+                isSelected && { color: '#FFFFFF', fontWeight: 'bold' }
+              ]}>
+                {date.day}
+              </Text>
+
+              {totalExpense > 0 && (
+                <Text style={[styles.cellExpenseText, isSelected && { color: '#FFFFFF' }]} numberOfLines={1}>
+                  -₱{totalExpense >= 1000 ? `${(totalExpense / 1000).toFixed(1)}k` : Math.round(totalExpense)}
+                </Text>
+              )}
+            </TouchableOpacity>
+          );
+        }}
         theme={{
           backgroundColor: theme.cardBg,
           calendarBackground: theme.cardBg,
@@ -101,6 +157,23 @@ export default function CalendarScreen({ onBack }) {
         }}
         style={styles.calendarStyle}
       />
+
+      {/* Selected Day Summary Banner */}
+      <View style={[styles.daySummaryCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryItemLabel, { color: theme.subText }]}>Total Spent</Text>
+          <Text style={[styles.summaryItemAmount, { color: '#EF4444' }]}>
+            -₱{totalDayExpense.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </Text>
+        </View>
+        <View style={[styles.summaryDivider, { backgroundColor: theme.border }]} />
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryItemLabel, { color: theme.subText }]}>Total Earned</Text>
+          <Text style={[styles.summaryItemAmount, { color: '#10B981' }]}>
+            +₱{totalDayIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </Text>
+        </View>
+      </View>
 
       {/* Selected Day Subheader */}
       <View style={styles.sectionHeader}>
@@ -149,7 +222,27 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   backBtn: { marginRight: 15 },
   headerTitle: { fontSize: 20, fontWeight: 'bold' },
-  calendarStyle: { borderRadius: 16, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: '#334155' },
+  calendarStyle: { borderRadius: 16, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: '#334155' },
+  
+  // Custom Cell Styles
+  dayCell: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
+  dayNum: { fontSize: 13 },
+  cellExpenseText: { fontSize: 9, color: '#EF4444', fontWeight: 'bold', marginTop: 1 },
+
+  // Summary Card Styles
+  daySummaryCard: {
+    flexDirection: 'row',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  summaryItem: { flex: 1, alignItems: 'center' },
+  summaryItemLabel: { fontSize: 12, marginBottom: 4 },
+  summaryItemAmount: { fontSize: 16, fontWeight: 'bold' },
+  summaryDivider: { width: 1, height: '80%' },
+
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   subHeaderTitle: { fontSize: 16, fontWeight: 'bold' },
   countBadge: { fontSize: 13 },

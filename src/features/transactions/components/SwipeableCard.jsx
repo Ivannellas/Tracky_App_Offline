@@ -1,12 +1,14 @@
-import React, { useRef } from 'react';
+import React, { useRef, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatTransactionDate } from '../../../utils/dateFormatter';
+import { ThemeContext } from '../../../context/ThemeContext'; // <-- Import Theme Context
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const ACTION_BUTTON_WIDTH = 60; 
 
 export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
+  const { theme } = useContext(ThemeContext); // <-- Access dynamic theme values
   const scrollViewRef = useRef(null);
 
   const handleActionPress = (actionCallback) => {
@@ -22,7 +24,7 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
   const subtitleText = subtitleParts.join(' • ');
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderColor: theme.border }]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
@@ -30,14 +32,14 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
         bounces={false}
         decelerationRate="fast"
         snapToInterval={ACTION_BUTTON_WIDTH * 3}
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: theme.cardBg }]}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Main Transaction Card Content */}
-        <View style={[styles.txCard, { width: SCREEN_WIDTH - 40 }]}>
+        <View style={[styles.txCard, { width: SCREEN_WIDTH - 40, backgroundColor: theme.cardBg }]}>
           <View style={styles.leftContent}>
-            <Text style={styles.txCategory} numberOfLines={1}>{item.category_name}</Text>
-            <Text style={styles.txAccount} numberOfLines={1}>
+            <Text style={[styles.txCategory, { color: theme.text }]} numberOfLines={1}>{item.category_name}</Text>
+            <Text style={[styles.txAccount, { color: theme.subText }]} numberOfLines={1}>
               {subtitleText}
             </Text>
           </View>
@@ -89,13 +91,13 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
 const styles = StyleSheet.create({
   container: { 
     marginBottom: 8, 
-    borderRadius: 10, 
+    borderRadius: 12, 
     overflow: 'hidden',
     height: 64,
+    borderWidth: 1,
   },
   scrollView: { 
-    backgroundColor: '#1E293B', 
-    borderRadius: 10,
+    borderRadius: 12,
   },
   scrollContent: {
     alignItems: 'center',
@@ -106,11 +108,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
   },
   leftContent: { flex: 1, marginRight: 10 },
-  txCategory: { color: '#F8FAFC', fontSize: 14, fontWeight: '600' },
-  txAccount: { color: '#64748B', fontSize: 11, marginTop: 2 },
+  txCategory: { fontSize: 14, fontWeight: '600' },
+  txAccount: { fontSize: 11, marginTop: 2 },
   txAmount: { fontSize: 15, fontWeight: 'bold' },
   income: { color: '#10B981' },
   expense: { color: '#EF4444' },

@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { getAllAccounts } from '../../../api/accountsRepo';
 import { getCategoriesByType } from '../../../api/categoriesRepo';
 import { insertTransaction } from '../../../api/transactionsRepo';
+import { ThemeContext } from '../../../context/ThemeContext'; // <-- Import Theme Context
 
 export default function AddTransactionModal({ visible, initialData, onClose, onSuccess }) {
+  const { theme } = useContext(ThemeContext); // <-- Access dynamic theme values
+
   const [type, setType] = useState('expense'); // 'expense' or 'income'
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -63,7 +66,7 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
       amount: parseFloat(amount),
       type: type,
       note: note.trim() || null,
-      date: currentDateTime // Saves exact timestamp (e.g., "2026-10-19T14:32:00.000Z")
+      date: currentDateTime 
     });
 
     onSuccess(); // Refresh dashboard data
@@ -73,87 +76,108 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>
+        <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+          
+          <Text style={[styles.modalTitle, { color: theme.text }]}>
             {initialData ? 'Duplicate Transaction' : 'New Transaction'}
           </Text>
 
           {/* Type Selector Tabs */}
-          <View style={styles.typeRow}>
+          <View style={[styles.typeRow, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
             <TouchableOpacity
               style={[styles.typeTab, type === 'expense' && styles.activeExpense]}
               onPress={() => loadCategories('expense')}
             >
-              <Text style={[styles.typeTabText, type === 'expense' && styles.activeText]}>Expense</Text>
+              <Text style={[styles.typeTabText, { color: theme.subText }, type === 'expense' && styles.activeText]}>Expense</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.typeTab, type === 'income' && styles.activeIncome]}
               onPress={() => loadCategories('income')}
             >
-              <Text style={[styles.typeTabText, type === 'income' && styles.activeText]}>Income</Text>
+              <Text style={[styles.typeTabText, { color: theme.subText }, type === 'income' && styles.activeText]}>Income</Text>
             </TouchableOpacity>
           </View>
 
           {/* Amount Input */}
-          <Text style={styles.label}>Amount (₱)</Text>
+          <Text style={[styles.label, { color: theme.subText }]}>Amount (₱)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
             placeholder="0.00"
-            placeholderTextColor="#64748B"
+            placeholderTextColor={theme.subText}
             keyboardType="numeric"
             value={amount}
             onChangeText={setAmount}
           />
 
           {/* Account Selection */}
-          <Text style={styles.label}>Account / Wallet</Text>
+          <Text style={[styles.label, { color: theme.subText }]}>Account / Wallet</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
             {accounts.map((acc) => (
               <TouchableOpacity
                 key={acc.id}
-                style={[styles.chip, selectedAccount === acc.id && styles.selectedChip]}
+                style={[
+                  styles.chip, 
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  selectedAccount === acc.id && { backgroundColor: theme.primary, borderColor: theme.primary }
+                ]}
                 onPress={() => setSelectedAccount(acc.id)}
               >
-                <Text style={[styles.chipText, selectedAccount === acc.id && styles.selectedChipText]}>{acc.name}</Text>
+                <Text style={[styles.chipText, { color: theme.subText }, selectedAccount === acc.id && styles.selectedChipText]}>
+                  {acc.name}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {/* Category Selection */}
-          <Text style={styles.label}>Category</Text>
+          <Text style={[styles.label, { color: theme.subText }]}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
             {categories.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
-                style={[styles.chip, selectedCategory === cat.id && styles.selectedChip]}
+                style={[
+                  styles.chip, 
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  selectedCategory === cat.id && { backgroundColor: theme.primary, borderColor: theme.primary }
+                ]}
                 onPress={() => setSelectedCategory(cat.id)}
               >
-                <Text style={[styles.chipText, selectedCategory === cat.id && styles.selectedChipText]}>{cat.name}</Text>
+                <Text style={[styles.chipText, { color: theme.subText }, selectedCategory === cat.id && styles.selectedChipText]}>
+                  {cat.name}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {/* Note Input */}
-          <Text style={styles.label}>Note (Optional)</Text>
+          <Text style={[styles.label, { color: theme.subText }]}>Note (Optional)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
             placeholder="Lunch with team, Grocery run"
-            placeholderTextColor="#64748B"
+            placeholderTextColor={theme.subText}
             value={note}
             onChangeText={setNote}
           />
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+            <TouchableOpacity 
+              style={[styles.cancelButton, { backgroundColor: theme.border }]} 
+              onPress={onClose}
+            >
+              <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+
+            <TouchableOpacity 
+              style={[styles.saveButton, { backgroundColor: theme.primary }]} 
+              onPress={handleSave}
+            >
               <Text style={styles.saveButtonText}>
                 {initialData ? 'Save Copy' : 'Save Transaction'}
               </Text>
             </TouchableOpacity>
           </View>
+
         </View>
       </View>
     </Modal>
@@ -161,25 +185,99 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#1E293B', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle: { color: '#F8FAFC', fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  typeRow: { flexDirection: 'row', backgroundColor: '#0F172A', borderRadius: 12, padding: 4, marginBottom: 16 },
-  typeTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
-  activeExpense: { backgroundColor: '#EF4444' },
-  activeIncome: { backgroundColor: '#10B981' },
-  typeTabText: { color: '#94A3B8', fontWeight: '600' },
-  activeText: { color: '#FFFFFF' },
-  label: { color: '#94A3B8', fontSize: 13, marginBottom: 6, marginTop: 12 },
-  input: { backgroundColor: '#0F172A', color: '#F8FAFC', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#334155' },
-  chipsRow: { flexDirection: 'row', marginBottom: 4 },
-  chip: { backgroundColor: '#0F172A', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, marginRight: 8, borderWidth: 1, borderColor: '#334155' },
-  selectedChip: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
-  chipText: { color: '#94A3B8', fontSize: 14 },
-  selectedChipText: { color: '#FFFFFF', fontWeight: 'bold' },
-  buttonRow: { flexDirection: 'row', marginTop: 24, gap: 12 },
-  cancelButton: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#334155', alignItems: 'center' },
-  cancelButtonText: { color: '#F8FAFC', fontWeight: 'bold' },
-  saveButton: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#8B5CF6', alignItems: 'center' },
-  saveButtonText: { color: '#FFFFFF', fontWeight: 'bold' }
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    padding: 24, 
+    paddingBottom: 40 
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    marginBottom: 20, 
+    textAlign: 'center' 
+  },
+  typeRow: { 
+    flexDirection: 'row', 
+    borderRadius: 12, 
+    padding: 4, 
+    marginBottom: 16,
+    borderWidth: 1 
+  },
+  typeTab: { 
+    flex: 1, 
+    paddingVertical: 10, 
+    alignItems: 'center', 
+    borderRadius: 10 
+  },
+  activeExpense: { 
+    backgroundColor: '#EF4444' 
+  },
+  activeIncome: { 
+    backgroundColor: '#10B981' 
+  },
+  typeTabText: { 
+    fontWeight: '600' 
+  },
+  activeText: { 
+    color: '#FFFFFF' 
+  },
+  label: { 
+    fontSize: 13, 
+    marginBottom: 6, 
+    marginTop: 12 
+  },
+  input: { 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 16, 
+    borderWidth: 1 
+  },
+  chipsRow: { 
+    flexDirection: 'row', 
+    marginBottom: 4 
+  },
+  chip: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 10, 
+    borderRadius: 10, 
+    marginRight: 8, 
+    borderWidth: 1 
+  },
+  chipText: { 
+    fontSize: 14 
+  },
+  selectedChipText: { 
+    color: '#FFFFFF', 
+    fontWeight: 'bold' 
+  },
+  buttonRow: { 
+    flexDirection: 'row', 
+    marginTop: 24, 
+    gap: 12 
+  },
+  cancelButton: { 
+    flex: 1, 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center' 
+  },
+  cancelButtonText: { 
+    fontWeight: 'bold' 
+  },
+  saveButton: { 
+    flex: 1, 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center' 
+  },
+  saveButtonText: { 
+    color: '#FFFFFF', 
+    fontWeight: 'bold' 
+  }
 });
