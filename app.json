@@ -2,23 +2,28 @@
   "expo": {
     "name": "Trackly",
     "slug": "tracklyV2",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F172A"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.ivanrellas.tracklyoffline",
-      "versionCode": 5,
+      "versionCode": 6,
+      "splash": {
+        "image": "./assets/logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0F172A"
+      },
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/logo.png"
       }
     },

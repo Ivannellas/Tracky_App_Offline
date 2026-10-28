@@ -18,6 +18,9 @@ export default function DashboardScreen({ onOpenCalendar }) {
   const [accounts, setAccounts] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
   
+  // Privacy State (Hide/Reveal Balances)
+  const [hideBalances, setHideBalances] = useState(false);
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -142,14 +145,28 @@ export default function DashboardScreen({ onOpenCalendar }) {
             style={[styles.headerIconButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
             onPress={onOpenCalendar}
           >
-            <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+            <Ionicons name="calendar-outline" size={26} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* Net Worth Summary */}
+        {/* Net Worth Summary Card */}
         <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-          <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Net Balance</Text>
-          <Text style={[styles.summaryAmount, { color: theme.text }]}>₱{totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
+          <View style={styles.summaryHeaderRow}>
+            <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Net Balance</Text>
+            <TouchableOpacity onPress={() => setHideBalances(!hideBalances)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons 
+                name={hideBalances ? 'eye-off-outline' : 'eye-outline'} 
+                size={18} 
+                color={theme.subText} 
+              />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={[styles.summaryAmount, { color: theme.text }]}>
+            {hideBalances 
+              ? '₱ ••••••' 
+              : `₱${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          </Text>
         </View>
 
         {/* Wallets Header */}
@@ -165,6 +182,7 @@ export default function DashboardScreen({ onOpenCalendar }) {
         </View>
         <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Tap any wallet to Edit or Delete</Text>
 
+        {/* Wallets Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsRow}>
           {accounts.map((account) => {
             const hasCustomColor = !!account.color;
@@ -188,7 +206,9 @@ export default function DashboardScreen({ onOpenCalendar }) {
                   {account.name}
                 </Text>
                 <Text style={[styles.accountBalance, { color: textColor }]}>
-                  ₱{account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {hideBalances 
+                    ? '₱ ••••••' 
+                    : `₱${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
                 </Text>
               </TouchableOpacity>
             );
@@ -309,49 +329,69 @@ export default function DashboardScreen({ onOpenCalendar }) {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   container: { flex: 1 },
-  content: { padding: 20, paddingTop: 60, paddingBottom: 100 },
+  content: { padding: 14, paddingTop: 45, paddingBottom: 90 },
   appHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
   },
   appSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
   },
   headerIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
+    width: 45,
+    height: 45,
+    borderRadius: 10,
+    justify: 'center',
     alignItems: 'center',
     borderWidth: 1,
   },
-  summaryCard: { padding: 20, borderRadius: 16, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#8B5CF6', borderWidth: 1 },
-  summaryLabel: { fontSize: 14, marginBottom: 4 },
-  summaryAmount: { fontSize: 32, fontWeight: 'bold' },
+  summaryCard: { 
+    padding: 20, 
+    borderRadius: 12, 
+    marginBottom: 14, 
+    borderLeftWidth: 3, 
+    borderLeftColor: '#8B5CF6', 
+    borderWidth: 1 
+  },
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  summaryLabel: { 
+    fontSize: 12, 
+    textTransform: 'uppercase', 
+    fontWeight: '700' 
+  },
+  summaryAmount: { 
+    fontSize: 26, 
+    fontWeight: '700' 
+  },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold' },
-  seeAllText: { fontSize: 13, fontWeight: '600' },
-  smallAddBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
-  smallAddText: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
-  sectionSubtitle: { fontSize: 12, marginBottom: 12 },
-  accountsRow: { marginBottom: 20, flexDirection: 'row' },
-  accountCard: { padding: 16, borderRadius: 12, marginRight: 12, width: 140, borderWidth: 1 },
-  accountName: { fontSize: 12, marginBottom: 6 },
-  accountBalance: { fontSize: 18, fontWeight: 'bold' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12, borderWidth: 1, height: 44 },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14 },
-  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
-  filterText: { fontSize: 12, fontWeight: '600' },
-  activeFilterText: { color: '#FFFFFF', fontWeight: 'bold' },
-  emptyCard: { padding: 20, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
-  emptyText: { textAlign: 'center' },
-  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4 }
+  sectionTitle: { fontSize: 15, fontWeight: '700' },
+  seeAllText: { fontSize: 12, fontWeight: '600' },
+  smallAddBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  smallAddText: { fontSize: 11, fontWeight: '600', marginLeft: 3 },
+  sectionSubtitle: { fontSize: 11, marginBottom: 10 },
+  accountsRow: { marginBottom: 14, flexDirection: 'row' },
+  accountCard: { padding: 15, borderRadius: 10, marginRight: 10, width: 130, borderWidth: 1 },
+  accountName: { fontSize: 11, marginBottom: 4 },
+  accountBalance: { fontSize: 15, fontWeight: '700' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, marginBottom: 10, borderWidth: 1, height: 38 },
+  searchIcon: { marginRight: 6 },
+  searchInput: { flex: 1, fontSize: 13 },
+  filterRow: { flexDirection: 'row', gap: 6, marginBottom: 14 },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 6, borderWidth: 1 },
+  filterText: { fontSize: 11, fontWeight: '600' },
+  activeFilterText: { color: '#FFFFFF', fontWeight: '700' },
+  emptyCard: { padding: 16, borderRadius: 10, alignItems: 'center', borderWidth: 1 },
+  emptyText: { textAlign: 'center', fontSize: 12 },
+  fab: { position: 'absolute', bottom: 20, right: 20, width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 }
 });

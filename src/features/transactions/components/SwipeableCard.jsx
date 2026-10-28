@@ -2,13 +2,14 @@ import React, { useRef, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatTransactionDate } from '../../../utils/dateFormatter';
-import { ThemeContext } from '../../../context/ThemeContext'; // <-- Import Theme Context
+import { ThemeContext } from '../../../context/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const ACTION_BUTTON_WIDTH = 60; 
+const TOTAL_ACTIONS_WIDTH = ACTION_BUTTON_WIDTH * 3; // 180px
 
 export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
-  const { theme } = useContext(ThemeContext); // <-- Access dynamic theme values
+  const { theme } = useContext(ThemeContext);
   const scrollViewRef = useRef(null);
 
   const handleActionPress = (actionCallback) => {
@@ -16,27 +17,29 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
     actionCallback(item);
   };
 
-  // Build the subtitle string: "Wallet • Note (if exists) • Date, Time"
   const formattedDate = formatTransactionDate(item.date);
   const subtitleParts = [item.account_name];
   if (item.note) subtitleParts.push(item.note);
   if (formattedDate) subtitleParts.push(formattedDate);
   const subtitleText = subtitleParts.join(' • ');
 
+  // Matches parent screen padding (14 left + 14 right = 28)
+  const cardWidth = SCREEN_WIDTH - 28;
+
   return (
-    <View style={[styles.container, { borderColor: theme.border }]}>
+    <View style={[styles.container, { borderColor: theme.border, backgroundColor: theme.cardBg }]}>
       <ScrollView
         ref={scrollViewRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         bounces={false}
         decelerationRate="fast"
-        snapToInterval={ACTION_BUTTON_WIDTH * 3}
-        style={[styles.scrollView, { backgroundColor: theme.cardBg }]}
+        snapToOffsets={[0, TOTAL_ACTIONS_WIDTH]}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
         {/* Main Transaction Card Content */}
-        <View style={[styles.txCard, { width: SCREEN_WIDTH - 40, backgroundColor: theme.cardBg }]}>
+        <View style={[styles.txCard, { width: cardWidth }]}>
           <View style={styles.leftContent}>
             <Text style={[styles.txCategory, { color: theme.text }]} numberOfLines={1}>{item.category_name}</Text>
             <Text style={[styles.txAccount, { color: theme.subText }]} numberOfLines={1}>
@@ -56,30 +59,27 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
 
         {/* Revealed Actions */}
         <View style={styles.actionsContainer}>
-          {/* Copy / Duplicate Button */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.duplicateBtn]}
             onPress={() => handleActionPress(onDuplicate)}
           >
-            <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
+            <Ionicons name="copy-outline" size={16} color="#FFFFFF" />
             <Text style={styles.actionText}>Copy</Text>
           </TouchableOpacity>
 
-          {/* Edit Button */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.editBtn]}
             onPress={() => handleActionPress(onEdit)}
           >
-            <Ionicons name="pencil" size={18} color="#FFFFFF" />
+            <Ionicons name="pencil" size={16} color="#FFFFFF" />
             <Text style={styles.actionText}>Edit</Text>
           </TouchableOpacity>
 
-          {/* Delete Button */}
           <TouchableOpacity
             style={[styles.actionBtn, styles.deleteBtn]}
             onPress={() => handleActionPress(onDelete)}
           >
-            <Ionicons name="trash" size={18} color="#FFFFFF" />
+            <Ionicons name="trash" size={16} color="#FFFFFF" />
             <Text style={styles.actionText}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -91,34 +91,34 @@ export default function SwipeableCard({ item, onEdit, onDelete, onDuplicate }) {
 const styles = StyleSheet.create({
   container: { 
     marginBottom: 8, 
-    borderRadius: 12, 
+    borderRadius: 10, 
     overflow: 'hidden',
-    height: 64,
+    height: 60,
     borderWidth: 1,
   },
   scrollView: { 
-    borderRadius: 12,
+    borderRadius: 10,
   },
   scrollContent: {
-    alignItems: 'center',
+    flexDirection: 'row',
   },
   txCard: {
-    height: 64,
-    paddingHorizontal: 14,
+    height: 60,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   leftContent: { flex: 1, marginRight: 10 },
-  txCategory: { fontSize: 14, fontWeight: '600' },
-  txAccount: { fontSize: 11, marginTop: 2 },
-  txAmount: { fontSize: 15, fontWeight: 'bold' },
+  txCategory: { fontSize: 13, fontWeight: '600' },
+  txAccount: { fontSize: 10, marginTop: 2 },
+  txAmount: { fontSize: 14, fontWeight: '700' },
   income: { color: '#10B981' },
   expense: { color: '#EF4444' },
-  actionsContainer: { flexDirection: 'row', height: 64 },
+  actionsContainer: { flexDirection: 'row', height: 60 },
   actionBtn: {
     width: ACTION_BUTTON_WIDTH,
-    height: 64,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',   
   },
@@ -127,9 +127,9 @@ const styles = StyleSheet.create({
   deleteBtn: { backgroundColor: '#EF4444' }, 
   actionText: { 
     color: '#FFFFFF', 
-    fontSize: 10, 
-    fontWeight: 'bold', 
-    marginTop: 3, 
+    fontSize: 9, 
+    fontWeight: '700', 
+    marginTop: 2, 
     textAlign: 'center' 
   },
 });

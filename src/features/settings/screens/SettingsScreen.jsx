@@ -60,7 +60,7 @@ export default function SettingsScreen() {
         ]
       );
     } else {
-      lockApp(); // Triggers the LockScreen in creation mode
+      lockApp(); 
     }
   };
 
@@ -87,7 +87,11 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.bg }]} 
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={[styles.headerTitle, { color: theme.text }]}>Settings & Data</Text>
 
       {/* --- APP SECURITY SECTION --- */}
@@ -100,7 +104,7 @@ export default function SettingsScreen() {
         >
           <Ionicons 
             name={hasPinSet ? 'lock-closed' : 'lock-open-outline'} 
-            size={20} 
+            size={18} 
             color={hasPinSet ? '#8B5CF6' : theme.subText} 
           />
           <View style={styles.actionTextContainer}>
@@ -108,10 +112,10 @@ export default function SettingsScreen() {
               {hasPinSet ? 'Change / Disable PIN Lock' : 'Enable App PIN Lock'}
             </Text>
             <Text style={[styles.actionSubtitle, { color: theme.subText }]}>
-              {hasPinSet ? 'PIN protection is active' : 'Protect your financial data with a 4-digit PIN'}
+              {hasPinSet ? 'PIN protection is active' : 'Protect financial data with a 4-digit PIN'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+          <Ionicons name="chevron-forward" size={16} color={theme.subText} />
         </TouchableOpacity>
       </View>
 
@@ -120,7 +124,7 @@ export default function SettingsScreen() {
         <Text style={styles.sectionLabel}>Appearance</Text>
         <View style={[styles.themeCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
           <View style={styles.themeHeaderRow}>
-            <Ionicons name="color-palette-outline" size={20} color={theme.primary} />
+            <Ionicons name="color-palette-outline" size={18} color={theme.primary} />
             <Text style={[styles.themeCardTitle, { color: theme.text }]}>App Theme Mode</Text>
           </View>
           
@@ -141,7 +145,7 @@ export default function SettingsScreen() {
               >
                 <Ionicons 
                   name={item.icon} 
-                  size={16} 
+                  size={14} 
                   color={themeMode === item.id ? '#FFFFFF' : theme.subText} 
                 />
                 <Text 
@@ -167,12 +171,12 @@ export default function SettingsScreen() {
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={() => setIsCategoryModalVisible(true)}
         >
-          <Ionicons name="list-outline" size={20} color={theme.primary} />
+          <Ionicons name="list-outline" size={18} color={theme.primary} />
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: theme.text }]}>Manage Categories</Text>
             <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Add, edit, or delete income and expense categories</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+          <Ionicons name="chevron-forward" size={16} color={theme.subText} />
         </TouchableOpacity>
       </View>
 
@@ -184,24 +188,24 @@ export default function SettingsScreen() {
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={handleExport}
         >
-          <Ionicons name="cloud-download-outline" size={20} color="#10B981" />
+          <Ionicons name="cloud-download-outline" size={18} color="#10B981" />
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: theme.text }]}>Export Backup (.json)</Text>
-            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Save a secure copy of your current data or records</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Save a secure copy of your current data records</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+          <Ionicons name="chevron-forward" size={16} color={theme.subText} />
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={handleImport}
         >
-          <Ionicons name="cloud-upload-outline" size={20} color="#3B82F6" />
+          <Ionicons name="cloud-upload-outline" size={18} color="#3B82F6" />
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: theme.text }]}>Import Backup (.json)</Text>
             <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Restore records from a previously exported backup file</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+          <Ionicons name="chevron-forward" size={16} color={theme.subText} />
         </TouchableOpacity>
       </View>
 
@@ -213,20 +217,20 @@ export default function SettingsScreen() {
           style={[styles.actionButton, styles.dangerCard]} 
           onPress={handleDeleteAllTransactions}
         >
-          <Ionicons name="trash-bin-outline" size={20} color="#EF4444" />
+          <Ionicons name="trash-bin-outline" size={18} color="#EF4444" />
           <View style={styles.actionTextContainer}>
             <Text style={[styles.actionTitle, { color: '#EF4444' }]}>Delete All Transactions</Text>
-            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Clear transaction history (wallets & categories)</Text>
+            <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Clear transaction history (wallets & categories stay)</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#EF4444" />
+          <Ionicons name="chevron-forward" size={16} color="#EF4444" />
         </TouchableOpacity>
       </View>
 
       <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-        <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" style={{ marginBottom: 8 }} />
+        <Ionicons name="shield-checkmark-outline" size={22} color="#10B981" style={{ marginBottom: 6 }} />
         <Text style={[styles.infoTitle, { color: theme.text }]}>100% Offline & Private</Text>
         <Text style={[styles.infoText, { color: theme.subText }]}>
-          Your financial data stays securely on this device inside a local storage. No cloud servers, no tracking, and zero internet required.
+          Your financial data stays securely on this device inside local storage. No cloud servers, no tracking, and zero internet required.
         </Text>
       </View>
 
@@ -241,23 +245,23 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-  section: { marginBottom: 20 },
-  sectionLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', marginBottom: 10, color: '#94A3B8' },
-  themeCard: { padding: 16, borderRadius: 14, borderWidth: 1 },
-  themeHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  themeCardTitle: { fontSize: 15, fontWeight: '600' },
-  themeRow: { flexDirection: 'row', gap: 10 },
-  themeOption: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1, flexDirection: 'row', justifyContent: 'center', gap: 6 },
-  themeText: { fontSize: 13, fontWeight: '600' },
-  activeThemeText: { color: '#FFFFFF', fontWeight: 'bold' },
-  actionButton: { padding: 16, borderRadius: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, marginBottom: 8 },
+  content: { padding: 14, paddingTop: 45, paddingBottom: 120 }, 
+  headerTitle: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  section: { marginBottom: 14 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: 8, color: '#94A3B8' },
+  themeCard: { padding: 16, borderRadius: 10, borderWidth: 1 },
+  themeHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
+  themeCardTitle: { fontSize: 13, fontWeight: '600' },
+  themeRow: { flexDirection: 'row', gap: 8 },
+  themeOption: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', borderWidth: 1, flexDirection: 'row', justifyContent: 'center', gap: 4 },
+  themeText: { fontSize: 11, fontWeight: '600' },
+  activeThemeText: { color: '#FFFFFF', fontWeight: '700' },
+  actionButton: { padding: 13, borderRadius: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, marginBottom: 8 },
   dangerCard: { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.3)' },
-  actionTextContainer: { flex: 1, marginLeft: 14 },
-  actionTitle: { fontSize: 16, fontWeight: '600' },
-  actionSubtitle: { fontSize: 12, marginTop: 2 },
-  infoCard: { padding: 20, borderRadius: 16, alignItems: 'center', marginTop: 10, marginBottom: 30, borderWidth: 1 },
-  infoTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
-  infoText: { fontSize: 13, textAlign: 'center', lineHeight: 18 }
+  actionTextContainer: { flex: 1, marginLeft: 10 },
+  actionTitle: { fontSize: 13, fontWeight: '600' },
+  actionSubtitle: { fontSize: 10, marginTop: 1 },
+  infoCard: { padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 6, marginBottom: 20, borderWidth: 1 },
+  infoTitle: { fontSize: 14, fontWeight: '700' },
+  infoText: { fontSize: 11, textAlign: 'center', lineHeight: 15 }
 });

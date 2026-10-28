@@ -32,13 +32,11 @@ export default function CalendarScreen({ onBack }) {
         if (!tx.date) return;
         const dateKey = tx.date.split('T')[0];
 
-        // Track marker dots
         marks[dateKey] = {
           marked: true,
           dotColor: tx.type === 'expense' ? '#EF4444' : '#10B981',
         };
 
-        // Accumulate total expenses per day for the calendar cell view
         if (tx.type === 'expense') {
           totals[dateKey] = (totals[dateKey] || 0) + Number(tx.amount);
         }
@@ -75,7 +73,6 @@ export default function CalendarScreen({ onBack }) {
     }
   };
 
-  // Compute total spent and earned for the selected date
   const totalDayExpense = dayTransactions
     .filter(tx => tx.type === 'expense')
     .reduce((sum, tx) => sum + Number(tx.amount), 0);
@@ -85,11 +82,15 @@ export default function CalendarScreen({ onBack }) {
     .reduce((sum, tx) => sum + Number(tx.amount), 0);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.bg }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header Row with Back Option */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-          <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>‹ Back</Text>
+          <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '600' }}>‹ Back</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Calendar View</Text>
       </View>
@@ -218,41 +219,42 @@ export default function CalendarScreen({ onBack }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 50, paddingBottom: 50 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backBtn: { marginRight: 15 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold' },
-  calendarStyle: { borderRadius: 16, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: '#334155' },
+  container: { flex: 1, padding: 14, paddingTop: 45 },
+  scrollContent: { paddingBottom: 120 }, 
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  backBtn: { marginRight: 12 },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  calendarStyle: { borderRadius: 12, overflow: 'hidden', marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
   
   // Custom Cell Styles
-  dayCell: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
-  dayNum: { fontSize: 13 },
-  cellExpenseText: { fontSize: 9, color: '#EF4444', fontWeight: 'bold', marginTop: 1 },
+  dayCell: { width: 32, height: 38, alignItems: 'center', justifyContent: 'center' },
+  dayNum: { fontSize: 12 },
+  cellExpenseText: { fontSize: 8, color: '#EF4444', fontWeight: '700', marginTop: 1 },
 
   // Summary Card Styles
   daySummaryCard: {
     flexDirection: 'row',
-    padding: 14,
-    borderRadius: 12,
+    padding: 15,
+    borderRadius: 10,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: 12,
     alignItems: 'center',
   },
   summaryItem: { flex: 1, alignItems: 'center' },
-  summaryItemLabel: { fontSize: 12, marginBottom: 4 },
-  summaryItemAmount: { fontSize: 16, fontWeight: 'bold' },
+  summaryItemLabel: { fontSize: 10, textTransform: 'uppercase', fontWeight: '700', marginBottom: 2 },
+  summaryItemAmount: { fontSize: 14, fontWeight: '700' },
   summaryDivider: { width: 1, height: '80%' },
 
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  subHeaderTitle: { fontSize: 16, fontWeight: 'bold' },
-  countBadge: { fontSize: 13 },
-  emptyCard: { padding: 20, borderRadius: 12, alignItems: 'center', borderWidth: 1, marginBottom: 30 },
-  emptyText: { textAlign: 'center' },
-  txCard: { height: 64, paddingHorizontal: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 12, marginBottom: 8, borderWidth: 1 },
-  leftContent: { flex: 1, marginRight: 10 },
-  txCategory: { fontSize: 14, fontWeight: '600' },
-  txAccount: { fontSize: 11, marginTop: 2 },
-  txAmount: { fontSize: 15, fontWeight: 'bold' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  subHeaderTitle: { fontSize: 14, fontWeight: '700' },
+  countBadge: { fontSize: 11, fontWeight: '600' },
+  emptyCard: { padding: 16, borderRadius: 10, alignItems: 'center', borderWidth: 1, marginBottom: 20 },
+  emptyText: { textAlign: 'center', fontSize: 12 },
+  txCard: { height: 56, paddingHorizontal: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 10, marginBottom: 8, borderWidth: 1 },
+  leftContent: { flex: 1, marginRight: 8 },
+  txCategory: { fontSize: 13, fontWeight: '600' },
+  txAccount: { fontSize: 10, marginTop: 2 },
+  txAmount: { fontSize: 14, fontWeight: '700' },
   income: { color: '#10B981' },
   expense: { color: '#EF4444' }
 });

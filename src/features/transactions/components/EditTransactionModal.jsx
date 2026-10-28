@@ -1,13 +1,25 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TextInput, 
+  TouchableOpacity, 
+  Modal, 
+  ScrollView, 
+  KeyboardAvoidingView, 
+  Platform, 
+  TouchableWithoutFeedback, 
+  Keyboard 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getAllAccounts } from '../../../api/accountsRepo';
 import { getAllCategories } from '../../../api/categoriesRepo';
 import { updateTransaction } from '../../../api/transactionsRepo';
-import { ThemeContext } from '../../../context/ThemeContext'; // <-- Import Theme Context
+import { ThemeContext } from '../../../context/ThemeContext';
 
 export default function EditTransactionModal({ visible, transaction, onClose, onSuccess }) {
-  const { theme } = useContext(ThemeContext); // <-- Access dynamic theme values
+  const { theme } = useContext(ThemeContext);
 
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -48,102 +60,109 @@ export default function EditTransactionModal({ visible, transaction, onClose, on
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContainer, { backgroundColor: theme.cardBg }]}>
-          
-          <View style={styles.headerRow}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Transaction</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={theme.subText} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Type Selector (Income / Expense) */}
-            <View style={[styles.typeSelector, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-              <TouchableOpacity 
-                style={[styles.typeBtn, type === 'expense' && styles.activeExpense]} 
-                onPress={() => setType('expense')}
-              >
-                <Text style={[styles.typeText, { color: theme.subText }, type === 'expense' && styles.activeText]}>Expense</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.typeBtn, type === 'income' && styles.activeIncome]} 
-                onPress={() => setType('income')}
-              >
-                <Text style={[styles.typeText, { color: theme.subText }, type === 'income' && styles.activeText]}>Income</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Amount Input */}
-            <Text style={[styles.label, { color: theme.subText }]}>Amount (₱)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-              placeholder="0.00"
-              placeholderTextColor={theme.subText}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-
-            {/* Account Selector */}
-            <Text style={[styles.label, { color: theme.subText }]}>Wallet / Account</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectorRow}>
-              {accounts.map((acc) => (
-                <TouchableOpacity
-                  key={acc.id}
-                  style={[
-                    styles.chip, 
-                    { backgroundColor: theme.inputBg, borderColor: theme.border },
-                    accountId === acc.id && { backgroundColor: theme.primary, borderColor: theme.primary }
-                  ]}
-                  onPress={() => setAccountId(acc.id)}
-                >
-                  <Text style={[styles.chipText, { color: theme.subText }, accountId === acc.id && styles.activeChipText]}>
-                    {acc.name}
-                  </Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <View style={[styles.modalContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+              
+              <View style={styles.headerRow}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Transaction</Text>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color={theme.subText} />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
 
-            {/* Category Selector */}
-            <Text style={[styles.label, { color: theme.subText }]}>Category</Text>
-            <View style={styles.gridRow}>
-              {categories.filter(c => c.type === type).map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.catChip, 
-                    { backgroundColor: theme.inputBg, borderColor: theme.border },
-                    categoryId === cat.id && { backgroundColor: theme.primary, borderColor: theme.primary }
-                  ]}
-                  onPress={() => setCategoryId(cat.id)}
-                >
-                  <Text style={[styles.catChipText, { color: theme.subText }, categoryId === cat.id && styles.activeCatChipText]}>
-                    {cat.name}
-                  </Text>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* Type Selector (Income / Expense) */}
+                <View style={[styles.typeSelector, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+                  <TouchableOpacity 
+                    style={[styles.typeBtn, type === 'expense' && styles.activeExpense]} 
+                    onPress={() => setType('expense')}
+                  >
+                    <Text style={[styles.typeText, { color: theme.subText }, type === 'expense' && styles.activeText]}>Expense</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.typeBtn, type === 'income' && styles.activeIncome]} 
+                    onPress={() => setType('income')}
+                  >
+                    <Text style={[styles.typeText, { color: theme.subText }, type === 'income' && styles.activeText]}>Income</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Amount Input */}
+                <Text style={[styles.label, { color: theme.subText }]}>Amount (₱)</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+                  placeholder="0.00"
+                  placeholderTextColor={theme.subText}
+                  keyboardType="numeric"
+                  value={amount}
+                  onChangeText={setAmount}
+                />
+
+                {/* Account Selector */}
+                <Text style={[styles.label, { color: theme.subText }]}>Wallet / Account</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectorRow}>
+                  {accounts.map((acc) => (
+                    <TouchableOpacity
+                      key={acc.id}
+                      style={[
+                        styles.chip, 
+                        { backgroundColor: theme.inputBg, borderColor: theme.border },
+                        accountId === acc.id && { backgroundColor: theme.primary, borderColor: theme.primary }
+                      ]}
+                      onPress={() => setAccountId(acc.id)}
+                    >
+                      <Text style={[styles.chipText, { color: theme.subText }, accountId === acc.id && styles.activeChipText]}>
+                        {acc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Category Selector */}
+                <Text style={[styles.label, { color: theme.subText }]}>Category</Text>
+                <View style={styles.gridRow}>
+                  {categories.filter(c => c.type === type).map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.catChip, 
+                        { backgroundColor: theme.inputBg, borderColor: theme.border },
+                        categoryId === cat.id && { backgroundColor: theme.primary, borderColor: theme.primary }
+                      ]}
+                      onPress={() => setCategoryId(cat.id)}
+                    >
+                      <Text style={[styles.catChipText, { color: theme.subText }, categoryId === cat.id && styles.activeCatChipText]}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Note Input */}
+                <Text style={[styles.label, { color: theme.subText }]}>Note (Optional)</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+                  placeholder="Grocery run, lunch"
+                  placeholderTextColor={theme.subText}
+                  value={note}
+                  onChangeText={setNote}
+                />
+
+                {/* Save Button */}
+                <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleUpdate}>
+                  <Text style={styles.saveBtnText}>Update Transaction</Text>
                 </TouchableOpacity>
-              ))}
+              </ScrollView>
+
             </View>
-
-            {/* Note Input */}
-            <Text style={[styles.label, { color: theme.subText }]}>Note (Optional)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-              placeholder="Grocery run, lunch"
-              placeholderTextColor={theme.subText}
-              value={note}
-              onChangeText={setNote}
-            />
-
-            {/* Save Button */}
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleUpdate}>
-              <Text style={styles.saveBtnText}>Update Transaction</Text>
-            </TouchableOpacity>
-          </ScrollView>
-
+          </KeyboardAvoidingView>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
@@ -151,35 +170,42 @@ export default function EditTransactionModal({ visible, transaction, onClose, on
 const styles = StyleSheet.create({
   modalOverlay: { 
     flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
+    backgroundColor: 'rgba(0,0,0,0.6)', 
     justifyContent: 'flex-end' 
   },
+  keyboardView: {
+    width: '100%',
+    justifyContent: 'flex-end',
+  },
   modalContainer: { 
-    borderTopLeftRadius: 24, 
-    borderTopRightRadius: 24, 
-    padding: 20, 
-    maxHeight: '85%' 
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20, 
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    maxHeight: '92%', 
+    borderWidth: 1,
+    borderBottomWidth: 0,
   },
   headerRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 16 
+    marginBottom: 10 
   },
   modalTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold' 
+    fontSize: 17, 
+    fontWeight: '700' 
   },
   typeSelector: { 
     flexDirection: 'row', 
     borderRadius: 10, 
-    padding: 4, 
-    marginBottom: 16, 
+    padding: 3, 
+    marginBottom: 10, 
     borderWidth: 1 
   },
   typeBtn: { 
     flex: 1, 
-    paddingVertical: 10, 
+    paddingVertical: 8, 
     alignItems: 'center', 
     borderRadius: 8 
   },
@@ -190,20 +216,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981' 
   },
   typeText: { 
-    fontWeight: '600' 
+    fontWeight: '600',
+    fontSize: 13,
   },
   activeText: { 
     color: '#FFFFFF' 
   },
   label: { 
-    fontSize: 13, 
+    fontSize: 12, 
+    fontWeight: '700',
     marginBottom: 6, 
-    marginTop: 12 
+    marginTop: 10 
   },
   input: { 
-    padding: 12, 
     borderRadius: 10, 
-    fontSize: 16, 
+    paddingVertical: 12,
+    paddingHorizontal: 14, 
+    fontSize: 15, 
     borderWidth: 1 
   },
   selectorRow: { 
@@ -219,7 +248,7 @@ const styles = StyleSheet.create({
   },
   activeChipText: { 
     color: '#FFFFFF', 
-    fontWeight: 'bold' 
+    fontWeight: '700' 
   },
   chipText: { 
     fontSize: 13 
@@ -227,32 +256,33 @@ const styles = StyleSheet.create({
   gridRow: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    gap: 8 
+    gap: 6,
+    marginBottom: 4,
   },
   catChip: { 
     paddingHorizontal: 12, 
     paddingVertical: 6, 
     borderRadius: 8, 
     borderWidth: 1, 
-    marginBottom: 6 
+    marginBottom: 4 
   },
   activeCatChipText: { 
     color: '#FFFFFF', 
-    fontWeight: 'bold' 
+    fontWeight: '700' 
   },
   catChipText: { 
     fontSize: 12 
   },
   saveBtn: { 
-    padding: 16, 
-    borderRadius: 12, 
+    padding: 14, 
+    borderRadius: 10, 
     alignItems: 'center', 
-    marginTop: 24, 
-    marginBottom: 20 
+    marginTop: 18, 
+    marginBottom: 12 
   },
   saveBtnText: { 
     color: '#FFFFFF', 
-    fontSize: 16, 
-    fontWeight: 'bold' 
+    fontSize: 14, 
+    fontWeight: '700' 
   },
 });
