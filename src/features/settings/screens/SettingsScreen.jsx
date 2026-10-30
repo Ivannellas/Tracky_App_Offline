@@ -1,15 +1,12 @@
-import React, { useState, useContext } from 'react';
+import React, { useContext } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { exportDatabaseBackup, importDatabaseBackup } from '../../../api/backupRepo';
 import { deleteAllTransactions } from '../../../api/transactionsRepo';
-import CategoryManagerModal from '../../categories/components/CategoryManagerModal';
 import { ThemeContext } from '../../../context/ThemeContext';
 import { AuthContext } from '../../../context/AuthContext';
 
-export default function SettingsScreen() {
-  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+export default function SettingsScreen({ onOpenCategoryManager }) {
   const { theme, themeMode, changeTheme } = useContext(ThemeContext);
   const { hasPinSet, lockApp, removePin } = useContext(AuthContext);
 
@@ -169,7 +166,7 @@ export default function SettingsScreen() {
         
         <TouchableOpacity 
           style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
-          onPress={() => setIsCategoryModalVisible(true)}
+          onPress={onOpenCategoryManager}
         >
           <Ionicons name="list-outline" size={18} color={theme.primary} />
           <View style={styles.actionTextContainer}>
@@ -233,12 +230,6 @@ export default function SettingsScreen() {
           Your financial data stays securely on this device inside local storage. No cloud servers, no tracking, and zero internet required.
         </Text>
       </View>
-
-      {/* --- CATEGORY MANAGER MODAL COMPONENT --- */}
-      <CategoryManagerModal 
-        visible={isCategoryModalVisible} 
-        onClose={() => setIsCategoryModalVisible(false)} 
-      />
     </ScrollView>
   );
 }
