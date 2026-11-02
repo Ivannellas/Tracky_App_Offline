@@ -32,6 +32,9 @@ export const lightTheme = {
 export function ThemeProvider({ children }) {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeMode] = useState('system'); // 'dark', 'light', or 'system'
+  
+  // Persistent Privacy State for Balances across screen navigation
+  const [hideBalances, setHideBalances] = useState(false);
 
   const changeTheme = (mode) => {
     setThemeMode(mode);
@@ -42,7 +45,7 @@ export function ThemeProvider({ children }) {
   const theme = activeMode === 'light' ? lightTheme : darkTheme;
 
   return (
-    <ThemeContext.Provider value={{ theme, themeMode, changeTheme }}>
+    <ThemeContext.Provider value={{ theme, themeMode, changeTheme, hideBalances, setHideBalances }}>
       {children}
     </ThemeContext.Provider>
   );

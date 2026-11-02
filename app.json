@@ -9,7 +9,11 @@
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#0F172A",
+      "dark": {
+        "image": "./assets/logo.png",
+        "backgroundColor": "#0F172A"
+      }
     },
     "ios": {
       "supportsTablet": true
@@ -17,10 +21,15 @@
     "android": {
       "package": "com.ivanrellas.tracklyoffline",
       "versionCode": 6,
+      "softwareKeyboardLayoutMode": "resize",
       "splash": {
         "image": "./assets/logo.png",
         "resizeMode": "contain",
-        "backgroundColor": "#0F172A"
+        "backgroundColor": "#0F172A",
+        "dark": {
+          "image": "./assets/logo.png",
+          "backgroundColor": "#0F172A"
+        }
       },
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",

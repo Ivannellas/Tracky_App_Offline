@@ -10,19 +10,24 @@ export function getCategoriesByType(type) {
   return db.getAllSync('SELECT * FROM categories WHERE type = ? ORDER BY name ASC', [type]);
 }
 
-// Create category with optional budget_limit
-export function createCategory({ name, type, color = '#A78BFA', budget_limit = 0 }) {
+// Create/Add category
+export function addCategory({ name, type, color = '#8B5CF6', icon = 'pricetag-outline', budget_limit = 0 }) {
   return db.runSync(
-    'INSERT INTO categories (name, type, color, budget_limit) VALUES (?, ?, ?, ?)',
-    [name.trim(), type, color, budget_limit]
+    'INSERT INTO categories (name, type, color, icon, budget_limit) VALUES (?, ?, ?, ?, ?)',
+    [name.trim(), type, color, icon, budget_limit]
   );
 }
 
-// Update category details (name, color, optional budget_limit)
-export function updateCategory(id, { name, color, budget_limit = 0 }) {
+// Keep createCategory as an alias just in case
+export function createCategory(data) {
+  return addCategory(data);
+}
+
+// Update category details
+export function updateCategory(id, { name, icon, color, type, budget_limit = 0 }) {
   return db.runSync(
-    'UPDATE categories SET name = ?, color = ?, budget_limit = ? WHERE id = ?',
-    [name.trim(), color, budget_limit, id]
+    'UPDATE categories SET name = ?, icon = ?, color = ?, type = ?, budget_limit = ? WHERE id = ?',
+    [name.trim(), icon, color, type, budget_limit, id]
   );
 }
 

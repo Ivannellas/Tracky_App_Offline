@@ -1,25 +1,23 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getTotalBalance, getAllAccounts, deleteAccount } from '../../../api/accountsRepo';
+import { getTotalBalance, getAllAccounts, deleteAccount, updateAccountsOrder } from '../../../api/accountsRepo';
 import { getAllTransactions, deleteTransaction } from '../../../api/transactionsRepo';
 import AddTransactionModal from '../../transactions/components/AddTransactionModal';
 import EditTransactionModal from '../../transactions/components/EditTransactionModal';
 import AddAccountModal from '../../transactions/components/AddAccountModal';
 import EditAccountModal from '../../transactions/components/EditAccountModal';
+import TransferModal from '../components/TransferModal';
 import SwipeableCard from '../../transactions/components/SwipeableCard';
 import { ThemeContext } from '../../../context/ThemeContext';
 import { formatTransactionDate } from '../../../utils/dateFormatter'; 
 
 export default function DashboardScreen({ onOpenCalendar }) {
-  const { theme } = useContext(ThemeContext);
+  const { theme, hideBalances, setHideBalances } = useContext(ThemeContext);
 
   const [totalBalance, setTotalBalance] = useState(0);
   const [accounts, setAccounts] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
-  
-  // Privacy State (Hide/Reveal Balances)
-  const [hideBalances, setHideBalances] = useState(false);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,11 +31,15 @@ export default function DashboardScreen({ onOpenCalendar }) {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [accountModalVisible, setAccountModalVisible] = useState(false);
   const [editAccountModalVisible, setEditAccountModalVisible] = useState(false);
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
   
+  // Wallet Management Sheet State
+  const [walletActionModalVisible, setWalletActionModalVisible] = useState(false);
+  const [activeWallet, setActiveWallet] = useState(null);
+
   const [selectedTx, setSelectedTx] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
   
-  // State for handling transaction duplication data
   const [selectedTxForDuplicate, setSelectedTxForDuplicate] = useState(null);
 
   useEffect(() => {
@@ -46,7 +48,8 @@ export default function DashboardScreen({ onOpenCalendar }) {
 
   const loadDashboardData = () => {
     setTotalBalance(getTotalBalance());
-    setAccounts(getAllAccounts());
+    const loadedAccounts = getAllAccounts();
+    setAccounts(loadedAccounts);
     setRecentTransactions(getAllTransactions());
   };
 
@@ -78,38 +81,59 @@ export default function DashboardScreen({ onOpenCalendar }) {
     );
   };
 
+  // Open Custom Action Sheet on Card Press or 3-Dots Click
   const handleAccountPress = (account) => {
+    setActiveWallet(account);
+    setWalletActionModalVisible(true);
+  };
+
+  const handleMoveLeft = () => {
+    if (!activeWallet) return;
+    const index = accounts.findIndex(a => a.id === activeWallet.id);
+    if (index > 0) {
+      const newAccounts = [...accounts];
+      const temp = newAccounts[index];
+      newAccounts[index] = newAccounts[index - 1];
+      newAccounts[index - 1] = temp;
+      updateAccountsOrder(newAccounts);
+      loadDashboardData();
+    }
+    setWalletActionModalVisible(false);
+  };
+
+  const handleMoveRight = () => {
+    if (!activeWallet) return;
+    const index = accounts.findIndex(a => a.id === activeWallet.id);
+    if (index < accounts.length - 1) {
+      const newAccounts = [...accounts];
+      const temp = newAccounts[index];
+      newAccounts[index] = newAccounts[index + 1];
+      newAccounts[index + 1] = temp;
+      updateAccountsOrder(newAccounts);
+      loadDashboardData();
+    }
+    setWalletActionModalVisible(false);
+  };
+
+  const handleTriggerEdit = () => {
+    setWalletActionModalVisible(false);
+    setSelectedAccount(activeWallet);
+    setEditAccountModalVisible(true);
+  };
+
+  const handleTriggerDelete = () => {
+    setWalletActionModalVisible(false);
     Alert.alert(
-      account.name,
-      `Manage wallet options`,
+      'Confirm Deletion',
+      `Deleting "${activeWallet.name}" will remove all transactions linked to it. Continue?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Edit',
-          onPress: () => {
-            setSelectedAccount(account);
-            setEditAccountModalVisible(true);
-          },
-        },
-        {
-          text: 'Delete',
+          text: 'Delete Wallet',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
-              'Confirm Deletion',
-              `Deleting "${account.name}" will remove all transactions linked to it. Continue?`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete Wallet',
-                  style: 'destructive',
-                  onPress: () => {
-                    deleteAccount(account.id);
-                    loadDashboardData();
-                  },
-                },
-              ]
-            );
+            deleteAccount(activeWallet.id);
+            loadDashboardData();
           },
         },
       ]
@@ -125,17 +149,18 @@ export default function DashboardScreen({ onOpenCalendar }) {
     return matchesType && matchesSearch;
   });
 
-  // Apply display limit when search/filter is not being actively searched
   const isSearchingOrFiltering = searchQuery.trim().length > 0 || filterType !== 'all';
   const displayedTransactions = (showAllTransactions || isSearchingOrFiltering)
     ? filteredTransactions
     : filteredTransactions.slice(0, TRANSACTION_LIMIT);
 
+  const activeWalletIndex = accounts.findIndex(a => a.id === activeWallet?.id);
+
   return (
     <View style={[styles.mainContainer, { backgroundColor: theme.bg }]}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         
-        {/* Top Header Row with App Title & Calendar Action Button */}
+        {/* Top Header Row */}
         <View style={styles.appHeader}>
           <View>
             <Text style={[styles.appName, { color: theme.text }]}>Trackly</Text>
@@ -144,8 +169,9 @@ export default function DashboardScreen({ onOpenCalendar }) {
           <TouchableOpacity 
             style={[styles.headerIconButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
             onPress={onOpenCalendar}
+            activeOpacity={0.8}
           >
-            <Ionicons name="calendar-outline" size={26} color={theme.primary} />
+            <Ionicons name="calendar-outline" size={24} color={theme.primary} />
           </TouchableOpacity>
         </View>
 
@@ -169,21 +195,35 @@ export default function DashboardScreen({ onOpenCalendar }) {
           </Text>
         </View>
 
-        {/* Wallets Header */}
+        {/* Wallets Header & Action Buttons */}
         <View style={styles.rowBetween}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Wallets</Text>
-          <TouchableOpacity 
-            onPress={() => setAccountModalVisible(true)} 
-            style={[styles.smallAddBtn, { backgroundColor: theme.cardBg, borderColor: theme.primary }]}
-          >
-            <Ionicons name="add" size={16} color={theme.primary} />
-            <Text style={[styles.smallAddText, { color: theme.primary }]}>Add Wallet</Text>
-          </TouchableOpacity>
+          <View style={styles.walletActionBtnsRow}>
+            {accounts.length >= 2 && (
+              <TouchableOpacity 
+                onPress={() => setTransferModalVisible(true)} 
+                style={[styles.smallAddBtn, { backgroundColor: theme.cardBg, borderColor: theme.primary, marginRight: 6 }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="swap-vertical" size={14} color={theme.primary} />
+                <Text style={[styles.smallAddText, { color: theme.primary }]}>Transfer</Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity 
+              onPress={() => setAccountModalVisible(true)} 
+              style={[styles.smallAddBtn, { backgroundColor: theme.cardBg, borderColor: theme.primary }]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={16} color={theme.primary} />
+              <Text style={[styles.smallAddText, { color: theme.primary }]}>Add Wallet</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Tap any wallet to Edit or Delete</Text>
+        <Text style={[styles.sectionSubtitle, { color: theme.subText }]}>Tap any wallet card to manage, reorder or edit</Text>
 
         {/* Wallets Row */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsRow} keyboardShouldPersistTaps="handled">
           {accounts.map((account) => {
             const hasCustomColor = !!account.color;
             const cardBgColor = account.color || theme.cardBg;
@@ -201,10 +241,18 @@ export default function DashboardScreen({ onOpenCalendar }) {
                   }
                 ]}
                 onPress={() => handleAccountPress(account)}
+                onLongPress={() => handleAccountPress(account)}
+                activeOpacity={0.85}
               >
-                <Text style={[styles.accountName, { color: subTextColor }]} numberOfLines={1}>
-                  {account.name}
-                </Text>
+                <View style={styles.cardTopRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 4 }}>
+                    <Ionicons name={account.icon || 'wallet-outline'} size={14} color={subTextColor} style={{ marginRight: 5 }} />
+                    <Text style={[styles.accountName, { color: subTextColor }]} numberOfLines={1}>
+                      {account.name}
+                    </Text>
+                  </View>
+                  <Ionicons name="ellipsis-vertical" size={12} color={subTextColor} />
+                </View>
                 <Text style={[styles.accountBalance, { color: textColor }]}>
                   {hideBalances 
                     ? '₱ ••••••' 
@@ -243,6 +291,7 @@ export default function DashboardScreen({ onOpenCalendar }) {
                 filterType === type && { backgroundColor: theme.primary, borderColor: theme.primary }
               ]}
               onPress={() => setFilterType(type)}
+              activeOpacity={0.8}
             >
               <Text style={[styles.filterText, { color: theme.subText }, filterType === type && styles.activeFilterText]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -251,7 +300,7 @@ export default function DashboardScreen({ onOpenCalendar }) {
           ))}
         </View>
 
-        {/* Recent Activity Header with Limit Toggle */}
+        {/* Recent Activity Header */}
         <View style={styles.rowBetween}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
           {filteredTransactions.length > TRANSACTION_LIMIT && !isSearchingOrFiltering && (
@@ -288,9 +337,58 @@ export default function DashboardScreen({ onOpenCalendar }) {
           setSelectedTxForDuplicate(null);
           setAddModalVisible(true);
         }}
+        activeOpacity={0.85}
       >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
+        <Ionicons name="add" size={26} color="#FFFFFF" />
       </TouchableOpacity>
+
+      {/* Custom Wallet Action Sheet Modal */}
+      <Modal
+        visible={walletActionModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setWalletActionModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.sheetOverlay} 
+          activeOpacity={1} 
+          onPress={() => setWalletActionModalVisible(false)}
+        >
+          <View style={[styles.sheetContent, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 8 }}>
+              <Ionicons name={activeWallet?.icon || 'wallet-outline'} size={20} color={theme.primary} />
+              <Text style={[styles.sheetTitle, { color: theme.text }]}>{activeWallet?.name}</Text>
+            </View>
+            <Text style={[styles.sheetSubtitle, { color: theme.subText }]}>Manage wallet options & position</Text>
+
+            <View style={styles.sheetActionList}>
+              {activeWalletIndex > 0 && (
+                <TouchableOpacity style={[styles.sheetActionItem, { backgroundColor: theme.inputBg, borderColor: theme.border }]} onPress={handleMoveLeft}>
+                  <Ionicons name="arrow-back" size={16} color={theme.primary} />
+                  <Text style={[styles.sheetActionText, { color: theme.text }]}>Move Left</Text>
+                </TouchableOpacity>
+              )}
+
+              {activeWalletIndex < accounts.length - 1 && (
+                <TouchableOpacity style={[styles.sheetActionItem, { backgroundColor: theme.inputBg, borderColor: theme.border }]} onPress={handleMoveRight}>
+                  <Ionicons name="arrow-forward" size={16} color={theme.primary} />
+                  <Text style={[styles.sheetActionText, { color: theme.text }]}>Move Right</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity style={[styles.sheetActionItem, { backgroundColor: theme.inputBg, borderColor: theme.border }]} onPress={handleTriggerEdit}>
+                <Ionicons name="create-outline" size={16} color={theme.primary} />
+                <Text style={[styles.sheetActionText, { color: theme.text }]}>Edit Wallet</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.sheetActionItem, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: '#EF4444' }]} onPress={handleTriggerDelete}>
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <Text style={[styles.sheetActionText, { color: '#EF4444' }]}>Delete Wallet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Modals */}
       <AddTransactionModal 
@@ -322,6 +420,14 @@ export default function DashboardScreen({ onOpenCalendar }) {
         onClose={() => setEditAccountModalVisible(false)} 
         onSuccess={loadDashboardData} 
       />
+
+      <TransferModal
+        visible={transferModalVisible}
+        onClose={() => setTransferModalVisible(false)}
+        accounts={accounts}
+        onTransferSuccess={loadDashboardData}
+        theme={theme}
+      />
     </View>
   );
 }
@@ -344,15 +450,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   headerIconButton: {
-    width: 45,
-    height: 45,
+    width: 42,
+    height: 42,
     borderRadius: 10,
-    justify: 'center',
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
   },
   summaryCard: { 
-    padding: 20, 
+    padding: 18, 
     borderRadius: 12, 
     marginBottom: 14, 
     borderLeftWidth: 3, 
@@ -366,32 +472,42 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryLabel: { 
-    fontSize: 12, 
+    fontSize: 11, 
     textTransform: 'uppercase', 
-    fontWeight: '700' 
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   summaryAmount: { 
-    fontSize: 26, 
+    fontSize: 24, 
     fontWeight: '700' 
   },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
   seeAllText: { fontSize: 12, fontWeight: '600' },
+  walletActionBtnsRow: { flexDirection: 'row', alignItems: 'center' },
   smallAddBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
   smallAddText: { fontSize: 11, fontWeight: '600', marginLeft: 3 },
   sectionSubtitle: { fontSize: 11, marginBottom: 10 },
   accountsRow: { marginBottom: 14, flexDirection: 'row' },
-  accountCard: { padding: 15, borderRadius: 10, marginRight: 10, width: 130, borderWidth: 1 },
-  accountName: { fontSize: 11, marginBottom: 4 },
-  accountBalance: { fontSize: 15, fontWeight: '700' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, marginBottom: 10, borderWidth: 1, height: 38 },
+  accountCard: { padding: 14, borderRadius: 12, marginRight: 10, width: 130, borderWidth: 1, justifyContent: 'space-between', height: 75 },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  accountName: { fontSize: 11, fontWeight: '600' },
+  accountBalance: { fontSize: 14, fontWeight: '700' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, marginBottom: 10, borderWidth: 1, height: 40 },
   searchIcon: { marginRight: 6 },
   searchInput: { flex: 1, fontSize: 13 },
   filterRow: { flexDirection: 'row', gap: 6, marginBottom: 14 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 6, borderWidth: 1 },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1 },
   filterText: { fontSize: 11, fontWeight: '600' },
   activeFilterText: { color: '#FFFFFF', fontWeight: '700' },
   emptyCard: { padding: 16, borderRadius: 10, alignItems: 'center', borderWidth: 1 },
   emptyText: { textAlign: 'center', fontSize: 12 },
-  fab: { position: 'absolute', bottom: 20, right: 20, width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 }
+  fab: { position: 'absolute', bottom: 20, right: 20, width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  sheetContent: { width: '100%', maxWidth: 320, borderRadius: 16, padding: 20, borderWidth: 1, elevation: 5 },
+  sheetTitle: { fontSize: 18, fontWeight: '700' },
+  sheetSubtitle: { fontSize: 12, marginBottom: 16 },
+  sheetActionList: { gap: 8 },
+  sheetActionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1, gap: 10 },
+  sheetActionText: { fontSize: 14, fontWeight: '600' }
 });

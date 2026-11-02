@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
     const [hasPinSet, setHasPinSet] = useState(false);
     const [savedPin, setSavedPin] = useState(null);
     const [isBiometricSupported, setIsBiometricSupported] = useState(false);
-    const [biometricType, setBiometricType] = useState('fingerprint'); // 'fingerprint' or 'face'
+    const [biometricType, setBiometricType] = useState('fingerprint'); // Strictly fingerprint
     const [isLoadingSecurity, setIsLoadingSecurity] = useState(true);
 
     useEffect(() => {
@@ -26,14 +26,18 @@ export const AuthProvider = ({ children }) => {
             const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
             if (hasHardware && isEnrolled) {
-                setIsBiometricSupported(true);
                 const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
 
-                // Explicitly check if FINGERPRINT is present and prioritize it over face
+                // STRICT SECURITY RULE: Only allow fingerprint authentication, completely ignore Face ID / Facial Recognition
                 const hasFingerprint = types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT);
 
-                // If fingerprint exists, force 'fingerprint'. Otherwise use 'face' if available.
-                setBiometricType(hasFingerprint ? 'fingerprint' : 'face');
+                if (hasFingerprint) {
+                    setIsBiometricSupported(true);
+                    setBiometricType('fingerprint');
+                } else {
+                    // Device has hardware/enrolled, but it's Face Recognition only -> Disable biometrics for higher security
+                    setIsBiometricSupported(false);
+                }
             } else {
                 setIsBiometricSupported(false);
             }
@@ -78,9 +82,12 @@ export const AuthProvider = ({ children }) => {
     const authenticateBiometrics = async () => {
         try {
             const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: ' ',
-                fallbackLabel: '',
+                promptMessage: 'Biometrics Login',
+                fallbackLabel: 'Use PIN',
                 disableDeviceFallback: true,
+                cancelLabel: 'Cancel',
+                requireConfirmation: true,
+                biometricsSecurityLevel: 'strong',
             });
 
             if (result.success) {

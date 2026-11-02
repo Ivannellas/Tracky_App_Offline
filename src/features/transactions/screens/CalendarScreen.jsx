@@ -5,9 +5,16 @@ import { ThemeContext } from '../../../context/ThemeContext';
 import { getDb } from '../../../api/sqLiteClient';
 import { formatTransactionDate } from '../../../utils/dateFormatter';
 
+// Helper to get correct YYYY-MM-DD in Philippine Time (UTC+8)
+const getPhilippineDateString = () => {
+  const now = new Date();
+  const phTime = new Date(now.getTime() + (8 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+  return phTime.toISOString().split('T')[0];
+};
+
 export default function CalendarScreen({ onBack }) {
   const { theme } = useContext(ThemeContext);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getPhilippineDateString());
   const [markedDates, setMarkedDates] = useState({});
   const [dayTotals, setDayTotals] = useState({});
   const [dayTransactions, setDayTransactions] = useState([]);
