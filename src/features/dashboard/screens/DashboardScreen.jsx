@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getTotalBalance, getAllAccounts, deleteAccount, updateAccountsOrder } from '../../../api/accountsRepo';
 import { getAllTransactions, deleteTransaction } from '../../../api/transactionsRepo';
@@ -39,8 +39,20 @@ export default function DashboardScreen({ onOpenCalendar }) {
 
   const [selectedTx, setSelectedTx] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
-  
   const [selectedTxForDuplicate, setSelectedTxForDuplicate] = useState(null);
+
+  // Custom In-App Alert State
+  const [customAlert, setCustomAlert] = useState({ 
+    visible: false, 
+    title: '', 
+    message: '', 
+    isConfirm: false, 
+    onConfirm: null 
+  });
+
+  const showAlert = (title, message, isConfirm = false, onConfirm = null) => {
+    setCustomAlert({ visible: true, title, message, isConfirm, onConfirm });
+  };
 
   useEffect(() => {
     loadDashboardData();
@@ -64,24 +76,17 @@ export default function DashboardScreen({ onOpenCalendar }) {
   };
 
   const handleDelete = (item) => {
-    Alert.alert(
+    showAlert(
       'Delete Transaction',
       `Are you sure you want to delete this ₱${item.amount} transaction?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteTransaction(item.id);
-            loadDashboardData();
-          },
-        },
-      ]
+      true,
+      () => {
+        deleteTransaction(item.id);
+        loadDashboardData();
+      }
     );
   };
 
-  // Open Custom Action Sheet on Card Press or 3-Dots Click
   const handleAccountPress = (account) => {
     setActiveWallet(account);
     setWalletActionModalVisible(true);
@@ -123,29 +128,26 @@ export default function DashboardScreen({ onOpenCalendar }) {
 
   const handleTriggerDelete = () => {
     setWalletActionModalVisible(false);
-    Alert.alert(
+    showAlert(
       'Confirm Deletion',
       `Deleting "${activeWallet.name}" will remove all transactions linked to it. Continue?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Wallet',
-          style: 'destructive',
-          onPress: () => {
-            deleteAccount(activeWallet.id);
-            loadDashboardData();
-          },
-        },
-      ]
+      true,
+      () => {
+        deleteAccount(activeWallet.id);
+        loadDashboardData();
+      }
     );
   };
 
   const filteredTransactions = recentTransactions.filter((item) => {
     const matchesType = filterType === 'all' || item.type === filterType;
+    const query = searchQuery.toLowerCase();
     const matchesSearch = 
-      item.category_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.account_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.note?.toLowerCase().includes(searchQuery.toLowerCase());
+      item.category_name?.toLowerCase().includes(query) ||
+      item.account_name?.toLowerCase().includes(query) ||
+      item.to_account_name?.toLowerCase().includes(query) ||
+      item.note?.toLowerCase().includes(query);
+
     return matchesType && matchesSearch;
   });
 
@@ -280,9 +282,9 @@ export default function DashboardScreen({ onOpenCalendar }) {
           )}
         </View>
 
-        {/* Filter Chips */}
+        {/* Filter Chips - Includes 'transfer' */}
         <View style={styles.filterRow}>
-          {['all', 'expense', 'income'].map((type) => (
+          {['all', 'expense', 'income', 'transfer'].map((type) => (
             <TouchableOpacity
               key={type}
               style={[
@@ -388,6 +390,45 @@ export default function DashboardScreen({ onOpenCalendar }) {
             </View>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* --- CUSTOM IN-APP ALERT DIALOG --- */}
+      <Modal
+        transparent={true}
+        visible={customAlert.visible}
+        animationType="fade"
+        onRequestClose={() => setCustomAlert({ ...customAlert, visible: false })}
+      >
+        <View style={styles.alertOverlay}>
+          <View style={[styles.alertBox, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <Text style={[styles.alertTitle, { color: theme.text }]}>{customAlert.title}</Text>
+            <Text style={[styles.alertMessage, { color: theme.subText }]}>{customAlert.message}</Text>
+            
+            <View style={styles.alertButtonRow}>
+              {customAlert.isConfirm && (
+                <TouchableOpacity
+                  style={[styles.alertBtn, { backgroundColor: theme.inputBg, borderColor: theme.border, borderWidth: 1, flex: 1 }]}
+                  onPress={() => setCustomAlert({ visible: false, title: '', message: '', isConfirm: false, onConfirm: null })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.alertBtnText, { color: theme.text }]}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[styles.alertBtn, { backgroundColor: customAlert.isConfirm ? '#EF4444' : theme.primary, flex: 1 }]}
+                onPress={() => {
+                  const action = customAlert.onConfirm;
+                  setCustomAlert({ visible: false, title: '', message: '', isConfirm: false, onConfirm: null });
+                  if (action) action();
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.alertBtnText}>{customAlert.isConfirm ? 'Delete' : 'OK'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Modals */}
@@ -509,5 +550,55 @@ const styles = StyleSheet.create({
   sheetSubtitle: { fontSize: 12, marginBottom: 16 },
   sheetActionList: { gap: 8 },
   sheetActionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1, gap: 10 },
-  sheetActionText: { fontSize: 14, fontWeight: '600' }
+  sheetActionText: { fontSize: 14, fontWeight: '600' },
+
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertBox: {
+    width: '100%',
+    maxWidth: 300,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  alertTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  alertMessage: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  alertButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  alertBtn: {
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
 });

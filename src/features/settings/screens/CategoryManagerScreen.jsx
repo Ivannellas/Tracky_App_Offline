@@ -7,7 +7,6 @@ import {
   ScrollView, 
   TextInput, 
   Modal,
-  Alert,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
@@ -39,7 +38,20 @@ export default function CategoryManagerScreen({ onBack }) {
   // Custom Color Grid Toggle State
   const [showCustomGrid, setShowCustomGrid] = useState(false);
 
-  // Expanded and categorized useful icons (fixed gamepad name to game-controller-outline)
+  // Custom In-App Alert State
+  const [customAlert, setCustomAlert] = useState({ 
+    visible: false, 
+    title: '', 
+    message: '', 
+    isConfirm: false, 
+    onConfirm: null 
+  });
+
+  const showAlert = (title, message, isConfirm = false, onConfirm = null) => {
+    setCustomAlert({ visible: true, title, message, isConfirm, onConfirm });
+  };
+
+  // Expanded and categorized useful icons
   const ICON_OPTIONS = [
     // Essentials & Bills
     'cart-outline', 'fast-food-outline', 'home-outline', 'flash-outline',
@@ -62,16 +74,12 @@ export default function CategoryManagerScreen({ onBack }) {
 
   // Vibrant, energetic, and expressive color palette
   const EXTENDED_COLOR_GRID = [
-    // Bright & Electric
     '#FF5733', '#FF8D1A', '#FFC300', '#DAF7A6',
     '#33FF57', '#33FFBD', '#33DBFF', '#3380FF',
-    // Rich Jewel & Deep Tones
     '#8E44AD', '#9B59B6', '#E74C3C', '#C0392B',
     '#D35400', '#E67E22', '#F1C40F', '#F39C12',
-    // Neon & Modern Accents
     '#00E676', '#1DE9B6', '#00B0FF', '#651FFF',
     '#D500F9', '#F50057', '#FF1744', '#FF9100',
-    // Deep Midnight & Dark Themes
     '#263238', '#37474F', '#455A64', '#2C3E50',
     '#1A237E', '#311B92', '#4A148C', '#880E4F'
   ];
@@ -111,7 +119,7 @@ export default function CategoryManagerScreen({ onBack }) {
 
   const handleSave = () => {
     if (!categoryName.trim()) {
-      Alert.alert('Required Field', 'Please enter a category name.');
+      showAlert('Required Field', 'Please enter a category name.');
       return;
     }
 
@@ -136,20 +144,14 @@ export default function CategoryManagerScreen({ onBack }) {
   };
 
   const handleDelete = (cat) => {
-    Alert.alert(
+    showAlert(
       'Delete Category',
       `Are you sure you want to delete "${cat.name}"? Transactions assigned to this category will keep their records.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteCategory(cat.id);
-            loadCategories();
-          },
-        },
-      ]
+      true,
+      () => {
+        deleteCategory(cat.id);
+        loadCategories();
+      }
     );
   };
 
@@ -167,6 +169,7 @@ export default function CategoryManagerScreen({ onBack }) {
         <TouchableOpacity 
           style={[styles.backBtn, { backgroundColor: theme.cardBg, borderColor: theme.border }]} 
           onPress={onBack}
+          activeOpacity={0.8}
         >
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </TouchableOpacity>
@@ -176,6 +179,7 @@ export default function CategoryManagerScreen({ onBack }) {
         <TouchableOpacity 
           style={[styles.addHeaderBtn, { backgroundColor: theme.primary }]} 
           onPress={handleOpenAddModal}
+          activeOpacity={0.85}
         >
           <Ionicons name="add" size={20} color="#FFFFFF" />
         </TouchableOpacity>
@@ -188,6 +192,7 @@ export default function CategoryManagerScreen({ onBack }) {
           <TouchableOpacity 
             style={[styles.segmentBtn, activeType === 'expense' && { backgroundColor: theme.primary }]}
             onPress={() => setActiveType('expense')}
+            activeOpacity={0.85}
           >
             <Text style={[styles.segmentText, activeType === 'expense' ? styles.activeSegmentText : { color: theme.subText }]}>
               Expenses
@@ -197,6 +202,7 @@ export default function CategoryManagerScreen({ onBack }) {
           <TouchableOpacity 
             style={[styles.segmentBtn, activeType === 'income' && { backgroundColor: theme.primary }]}
             onPress={() => setActiveType('income')}
+            activeOpacity={0.85}
           >
             <Text style={[styles.segmentText, activeType === 'income' ? styles.activeSegmentText : { color: theme.subText }]}>
               Income
@@ -222,7 +228,7 @@ export default function CategoryManagerScreen({ onBack }) {
           />
         </View>
 
-        {/* --- CATEGORIES GRID CARDS (FILLED WITH COLOR) --- */}
+        {/* --- CATEGORIES GRID CARDS --- */}
         {filteredCategories.length === 0 ? (
           <View style={[styles.emptyBox, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
             <Ionicons name="folder-open-outline" size={32} color={theme.subText} style={{ marginBottom: 6 }} />
@@ -250,10 +256,10 @@ export default function CategoryManagerScreen({ onBack }) {
                     </View>
                     
                     <View style={styles.cardActions}>
-                      <TouchableOpacity onPress={() => handleStartEdit(cat)} style={styles.actionIconBtn}>
+                      <TouchableOpacity onPress={() => handleStartEdit(cat)} style={styles.actionIconBtn} activeOpacity={0.8}>
                         <Ionicons name="pencil" size={14} color={badgeColor} />
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDelete(cat)} style={styles.actionIconBtn}>
+                      <TouchableOpacity onPress={() => handleDelete(cat)} style={styles.actionIconBtn} activeOpacity={0.8}>
                         <Ionicons name="trash-outline" size={14} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
@@ -289,15 +295,18 @@ export default function CategoryManagerScreen({ onBack }) {
             
             {/* Modal Header & Close Button */}
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {isEditing ? 'Edit Category' : `Add New ${activeType === 'expense' ? 'Expense' : 'Income'}`}
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeModalBtn}>
-                <Ionicons name="close" size={20} color={theme.subText} />
+              <View style={styles.titleContainer}>
+                <View style={[styles.titleIndicator, { backgroundColor: selectedColor }]} />
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {isEditing ? 'Edit Category' : `Add New ${activeType === 'expense' ? 'Expense' : 'Income'}`}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeModalBtn, { backgroundColor: theme.inputBg }]} activeOpacity={0.8}>
+                <Ionicons name="close" size={18} color={theme.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
               
               {/* --- LIVE PREVIEW CARD --- */}
               <View style={[styles.previewContainer, { backgroundColor: `${selectedColor}15`, borderColor: `${selectedColor}40` }]}>
@@ -318,7 +327,7 @@ export default function CategoryManagerScreen({ onBack }) {
               </View>
 
               {/* Name Input */}
-              <Text style={[styles.pickerLabel, { color: theme.subText }]}>Category Name</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Category Name</Text>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
                 placeholder="e.g. Groceries, Freelance"
@@ -328,8 +337,8 @@ export default function CategoryManagerScreen({ onBack }) {
               />
 
               {/* Color Selector Row */}
-              <Text style={[styles.pickerLabel, { color: theme.subText }]}>Badge Color</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerRow}>
+              <Text style={[styles.label, { color: theme.subText }]}>Badge Color</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerRow} keyboardShouldPersistTaps="handled">
                 {COLOR_OPTIONS.map((color) => (
                   <TouchableOpacity
                     key={color}
@@ -342,6 +351,7 @@ export default function CategoryManagerScreen({ onBack }) {
                       setSelectedColor(color);
                       setShowCustomGrid(false);
                     }}
+                    activeOpacity={0.8}
                   />
                 ))}
 
@@ -354,6 +364,7 @@ export default function CategoryManagerScreen({ onBack }) {
                     showCustomGrid && styles.selectedColorDot
                   ]}
                   onPress={() => setShowCustomGrid(!showCustomGrid)}
+                  activeOpacity={0.8}
                 >
                   <Ionicons name="color-palette-outline" size={14} color={theme.text} />
                 </TouchableOpacity>
@@ -373,6 +384,7 @@ export default function CategoryManagerScreen({ onBack }) {
                           selectedColor === color && styles.selectedGridBox
                         ]}
                         onPress={() => setSelectedColor(color)}
+                        activeOpacity={0.8}
                       />
                     ))}
                   </View>
@@ -380,7 +392,7 @@ export default function CategoryManagerScreen({ onBack }) {
               )}
 
               {/* Icon Selector Grid */}
-              <Text style={[styles.pickerLabel, { color: theme.subText }]}>Select Icon</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Select Icon</Text>
               <View style={styles.iconGrid}>
                 {ICON_OPTIONS.map((icon) => (
                   <TouchableOpacity
@@ -391,6 +403,7 @@ export default function CategoryManagerScreen({ onBack }) {
                       selectedIcon === icon && { backgroundColor: selectedColor, borderColor: selectedColor }
                     ]}
                     onPress={() => setSelectedIcon(icon)}
+                    activeOpacity={0.8}
                   >
                     <Ionicons 
                       name={icon} 
@@ -405,14 +418,54 @@ export default function CategoryManagerScreen({ onBack }) {
               <TouchableOpacity 
                 style={[styles.saveBtn, { backgroundColor: selectedColor }]} 
                 onPress={handleSave}
+                activeOpacity={0.85}
               >
-                <Ionicons name={isEditing ? "checkmark-circle" : "add-circle"} size={18} color="#FFFFFF" />
+                <Ionicons name={isEditing ? "checkmark-circle-outline" : "add-circle-outline"} size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.saveBtnText}>{isEditing ? 'Update Category' : 'Save Category'}</Text>
               </TouchableOpacity>
 
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* --- CUSTOM IN-APP ALERT DIALOG --- */}
+      <Modal
+        transparent={true}
+        visible={customAlert.visible}
+        animationType="fade"
+        onRequestClose={() => setCustomAlert({ ...customAlert, visible: false })}
+      >
+        <View style={styles.alertOverlay}>
+          <View style={[styles.alertBox, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <Text style={[styles.alertTitle, { color: theme.text }]}>{customAlert.title}</Text>
+            <Text style={[styles.alertMessage, { color: theme.subText }]}>{customAlert.message}</Text>
+            
+            <View style={styles.alertButtonRow}>
+              {customAlert.isConfirm && (
+                <TouchableOpacity
+                  style={[styles.alertBtn, { backgroundColor: theme.inputBg, borderColor: theme.border, borderWidth: 1, flex: 1 }]}
+                  onPress={() => setCustomAlert({ visible: false, title: '', message: '', isConfirm: false, onConfirm: null })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.alertBtnText, { color: theme.text }]}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[styles.alertBtn, { backgroundColor: customAlert.isConfirm ? '#EF4444' : theme.primary, flex: 1 }]}
+                onPress={() => {
+                  const action = customAlert.onConfirm;
+                  setCustomAlert({ visible: false, title: '', message: '', isConfirm: false, onConfirm: null });
+                  if (action) action();
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.alertBtnText}>{customAlert.isConfirm ? 'Delete' : 'OK'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
     </View>
@@ -456,33 +509,105 @@ const styles = StyleSheet.create({
   emptyBox: { padding: 30, borderRadius: 10, alignItems: 'center', borderWidth: 1, marginTop: 10 },
   emptyText: { fontSize: 12 },
 
-  // Modal Styles
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 16, maxHeight: '85%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  modalTitle: { fontSize: 15, fontWeight: '700' },
-  closeModalBtn: { padding: 4 },
+  // Modal Styles (Matched with other modals: borderTopLeftRadius: 26, maxHeight: 92%)
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.65)' },
+  modalContent: { 
+    borderTopLeftRadius: 26, 
+    borderTopRightRadius: 26, 
+    borderWidth: 1, 
+    borderBottomWidth: 0,
+    paddingHorizontal: 18,
+    paddingTop: 18, 
+    maxHeight: '92%' 
+  },
+  scrollContent: { paddingBottom: 40, paddingTop: 4 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  titleContainer: { flexDirection: 'row', alignItems: 'center' },
+  titleIndicator: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  modalTitle: { fontSize: 17, fontWeight: '700' },
+  closeModalBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
-  previewContainer: { padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 14 },
-  previewLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 6 },
+  previewContainer: { padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 14 },
+  previewLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
   previewCardRow: { flexDirection: 'row', alignItems: 'center' },
 
-  input: { height: 40, borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, fontSize: 12, marginBottom: 12 },
-  pickerLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 6 },
-  pickerRow: { flexDirection: 'row', marginBottom: 12 },
-  colorDot: { width: 26, height: 26, borderRadius: 13, marginRight: 8, justifyContent: 'center', alignItems: 'center' },
+  input: { height: 44, borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, fontSize: 13, marginBottom: 4 },
+  label: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginTop: 10 },
+  pickerRow: { flexDirection: 'row', marginBottom: 4, paddingVertical: 2 },
+  colorDot: { width: 30, height: 30, borderRadius: 15, marginRight: 8, justifyContent: 'center', alignItems: 'center' },
   customPickerCircle: { borderWidth: 1 },
-  selectedColorDot: { borderWidth: 2, borderColor: '#8B5CF6', transform: [{ scale: 1.1 }] },
+  selectedColorDot: { borderWidth: 2, borderColor: '#FFFFFF', transform: [{ scale: 1.08 }] },
 
-  customGridContainer: { padding: 10, borderRadius: 8, borderWidth: 1, marginBottom: 12 },
-  gridSubLabel: { fontSize: 10, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase' },
+  customGridContainer: { padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 12, marginTop: 4 },
+  gridSubLabel: { fontSize: 10, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 },
   colorGridMatrix: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   gridColorBox: { width: 28, height: 28, borderRadius: 14 },
-  selectedGridBox: { borderWidth: 2.5, borderColor: '#8B5CF6', transform: [{ scale: 1.15 }] },
+  selectedGridBox: { borderWidth: 2.5, borderColor: '#FFFFFF', transform: [{ scale: 1.15 }] },
 
-  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
-  iconBox: { width: 38, height: 38, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16, marginTop: 2 },
+  iconBox: { width: 38, height: 38, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
   
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 42, borderRadius: 8, gap: 6 },
-  saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 }
+  saveBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    height: 46, 
+    borderRadius: 12, 
+    marginTop: 10,
+    marginBottom: 10,
+    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
+
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertBox: {
+    width: '100%',
+    maxWidth: 300,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  alertTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  alertMessage: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  alertButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  alertBtn: {
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+  },
 });

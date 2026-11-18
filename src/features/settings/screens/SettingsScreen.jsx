@@ -242,7 +242,7 @@ export default function SettingsScreen({ onOpenCategoryManager }) {
               <Ionicons name="cloud-download-outline" size={16} color="#10B981" />
             </View>
             <View style={styles.actionTextContainer}>
-              <Text style={[styles.actionTitle, { color: theme.text }]}>Export Backup (.json)</Text>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Export Backup</Text>
               <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Save a secure copy of your current data records</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.subText} />
@@ -257,7 +257,7 @@ export default function SettingsScreen({ onOpenCategoryManager }) {
               <Ionicons name="cloud-upload-outline" size={16} color="#3B82F6" />
             </View>
             <View style={styles.actionTextContainer}>
-              <Text style={[styles.actionTitle, { color: theme.text }]}>Import Backup (.json)</Text>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Import Backup</Text>
               <Text style={[styles.actionSubtitle, { color: theme.subText }]}>Restore records from a previously exported backup file</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.subText} />

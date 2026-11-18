@@ -81,10 +81,8 @@ export function transferFunds({ fromAccountId, toAccountId, amount, fee = 0, not
       [transferAmount, toAccountId]
     );
 
-    // 3. Log a record in transactions table for history tracking
+    // 3. Fetch account names for note logging
     const today = new Date().toISOString().split('T')[0];
-    
-    // Fetch account names for note logging
     const fromAcc = db.getFirstSync('SELECT name FROM accounts WHERE id = ?', [fromAccountId]);
     const toAcc = db.getFirstSync('SELECT name FROM accounts WHERE id = ?', [toAccountId]);
 
@@ -92,10 +90,20 @@ export function transferFunds({ fromAccountId, toAccountId, amount, fee = 0, not
       ? `Transfer to ${toAcc?.name}: ${note.trim()}`
       : `Transfer: ${fromAcc?.name} -> ${toAcc?.name}`;
 
+    // 4. Log the main transfer record as type 'transfer' with to_account_id
     db.runSync(
-      `INSERT INTO transactions (account_id, category_id, amount, type, note, date) 
-       VALUES (?, (SELECT id FROM categories LIMIT 1), ?, 'expense', ?, ?)`,
-      [fromAccountId, totalDeduction, logNote, today]
+      `INSERT INTO transactions (account_id, to_account_id, category_id, amount, type, note, date) 
+       VALUES (?, ?, NULL, ?, 'transfer', ?, ?)`,
+      [fromAccountId, toAccountId, transferAmount, logNote, today]
     );
+
+    // 5. If there is a transfer fee, log it separately as an expense
+    if (transferFee > 0) {
+      db.runSync(
+        `INSERT INTO transactions (account_id, category_id, amount, type, note, date) 
+         VALUES (?, NULL, ?, 'expense', ?, ?)`,
+        [fromAccountId, transferFee, `Transfer Fee: ${toAcc?.name}`, today]
+      );
+    }
   });
 }

@@ -39,13 +39,18 @@ export default function CalendarScreen({ onBack }) {
         if (!tx.date) return;
         const dateKey = tx.date.split('T')[0];
 
-        marks[dateKey] = {
-          marked: true,
-          dotColor: tx.type === 'expense' ? '#EF4444' : '#10B981',
-        };
-
+        // Only mark or calculate totals for real expenses
         if (tx.type === 'expense') {
+          marks[dateKey] = {
+            marked: true,
+            dotColor: '#EF4444',
+          };
           totals[dateKey] = (totals[dateKey] || 0) + Number(tx.amount);
+        } else if (tx.type === 'income' && !marks[dateKey]) {
+          marks[dateKey] = {
+            marked: true,
+            dotColor: '#10B981',
+          };
         }
       });
 
@@ -66,10 +71,11 @@ export default function CalendarScreen({ onBack }) {
     try {
       const db = getDb();
       const txs = db.getAllSync(`
-        SELECT t.*, c.name as category_name, a.name as account_name 
+        SELECT t.*, c.name as category_name, a.name as account_name, dest.name as to_account_name 
         FROM transactions t
-        JOIN categories c ON t.category_id = c.id
+        LEFT JOIN categories c ON t.category_id = c.id
         JOIN accounts a ON t.account_id = a.id
+        LEFT JOIN accounts dest ON t.to_account_id = dest.id
         WHERE t.date LIKE ?
         ORDER BY datetime(t.date) DESC
       `, [`${dateString}%`]);
@@ -201,21 +207,33 @@ export default function CalendarScreen({ onBack }) {
       ) : (
         dayTransactions.map((item) => {
           const formattedDate = formatTransactionDate(item.date);
-          const subtitleParts = [item.account_name];
+          const subtitleParts = [];
+          
+          if (item.type === 'transfer') {
+            subtitleParts.push(`${item.account_name} ➔ ${item.to_account_name || 'Account'}`);
+          } else {
+            subtitleParts.push(item.account_name);
+          }
+
           if (item.note) subtitleParts.push(item.note);
           if (formattedDate) subtitleParts.push(formattedDate);
           const subtitleText = subtitleParts.join(' • ');
 
+          const titleText = item.type === 'transfer' ? 'Account Transfer' : item.category_name;
+
           return (
             <View key={item.id} style={[styles.txCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
               <View style={styles.leftContent}>
-                <Text style={[styles.txCategory, { color: theme.text }]} numberOfLines={1}>{item.category_name}</Text>
+                <Text style={[styles.txCategory, { color: theme.text }]} numberOfLines={1}>{titleText}</Text>
                 <Text style={[styles.txAccount, { color: theme.subText }]} numberOfLines={1}>
                   {subtitleText}
                 </Text>
               </View>
-              <Text style={[styles.txAmount, item.type === 'income' ? styles.income : styles.expense]}>
-                {item.type === 'income' ? '+' : '-'}₱{Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              <Text style={[
+                styles.txAmount, 
+                item.type === 'income' ? styles.income : item.type === 'expense' ? styles.expense : { color: theme.primary }
+              ]}>
+                {item.type === 'income' ? '+' : item.type === 'expense' ? '-' : '⇄ '}₱{Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </Text>
             </View>
           );

@@ -1,5 +1,6 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const ThemeContext = createContext();
 
@@ -29,12 +30,40 @@ export const lightTheme = {
   inputBg: '#F1F5F9',
 };
 
+const HIDE_BALANCES_STORAGE_KEY = '@trackly_hide_balances';
+
 export function ThemeProvider({ children }) {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeMode] = useState('system'); // 'dark', 'light', or 'system'
   
-  // Persistent Privacy State for Balances across screen navigation
-  const [hideBalances, setHideBalances] = useState(false);
+  // Persistent Privacy State for Balances across app restarts
+  const [hideBalances, setHideBalancesState] = useState(false);
+
+  // Load saved privacy preference on app startup
+  useEffect(() => {
+    async function loadHideBalancesPreference() {
+      try {
+        const savedPreference = await AsyncStorage.getItem(HIDE_BALANCES_STORAGE_KEY);
+        if (savedPreference !== null) {
+          setHideBalancesState(JSON.parse(savedPreference));
+        }
+      } catch (error) {
+        console.log('Failed to load hide balances preference', error);
+      }
+    }
+    loadHideBalancesPreference();
+  }, []);
+
+  // Custom setter that saves to AsyncStorage whenever state changes
+  const setHideBalances = async (value) => {
+    try {
+      const newValue = typeof value === 'function' ? value(hideBalances) : value;
+      setHideBalancesState(newValue);
+      await AsyncStorage.setItem(HIDE_BALANCES_STORAGE_KEY, JSON.stringify(newValue));
+    } catch (error) {
+      console.log('Failed to save hide balances preference', error);
+    }
+  };
 
   const changeTheme = (mode) => {
     setThemeMode(mode);

@@ -33,12 +33,14 @@ export function initDatabase() {
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       account_id INTEGER NOT NULL,
-      category_id INTEGER NOT NULL,
+      to_account_id INTEGER,
+      category_id INTEGER,
       amount REAL NOT NULL,
-      type TEXT CHECK(type IN ('income', 'expense')) NOT NULL,
+      type TEXT NOT NULL,
       note TEXT,
       date TEXT NOT NULL,
       FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+      FOREIGN KEY(to_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
       FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
     );
 
@@ -54,17 +56,65 @@ export function initDatabase() {
     );
   `);
 
+  // Auto-migration & Schema Validation for transactions table
+  try {
+    const txTableInfo = db.getAllSync("PRAGMA table_info(transactions)");
+    const hasToAccountId = txTableInfo.some((col) => col.name === 'to_account_id');
+
+    if (!hasToAccountId) {
+      db.execSync("ALTER TABLE transactions ADD COLUMN to_account_id INTEGER;");
+    }
+
+    // Check if category_id is still strictly constrained to NOT NULL in old database files
+    const categoryCol = txTableInfo.find((col) => col.name === 'category_id');
+    const isCategoryNotNull = categoryCol && categoryCol.notnull === 1;
+
+    if (isCategoryNotNull) {
+      // Safe table rebuild migration to allow NULL category_id for transfers
+      db.withTransactionSync(() => {
+        db.execSync(`ALTER TABLE transactions RENAME TO transactions_old;`);
+        db.execSync(`
+          CREATE TABLE transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            to_account_id INTEGER,
+            category_id INTEGER,
+            amount REAL NOT NULL,
+            type TEXT NOT NULL,
+            note TEXT,
+            date TEXT NOT NULL,
+            FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+            FOREIGN KEY(to_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
+            FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
+          );
+        `);
+        db.execSync(`
+          INSERT INTO transactions (id, account_id, to_account_id, category_id, amount, type, note, date)
+          SELECT id, account_id, to_account_id, category_id, amount, type, note, date FROM transactions_old;
+        `);
+        db.execSync(`DROP TABLE transactions_old;`);
+      });
+    }
+
+    // Clean up old miscategorized transfer expenses
+    db.execSync(`
+      UPDATE transactions 
+      SET type = 'transfer', category_id = NULL 
+      WHERE note LIKE '%Transfer:%' AND type = 'expense';
+    `);
+  } catch (error) {
+    console.log("Transactions migration/rebuild error:", error);
+  }
+
   // Auto-migration for categories table
   try {
     const tableInfo = db.getAllSync("PRAGMA table_info(categories)");
     
-    // Check and add budget_limit if missing
     const hasBudgetColumn = tableInfo.some((col) => col.name === 'budget_limit');
     if (!hasBudgetColumn) {
       db.execSync("ALTER TABLE categories ADD COLUMN budget_limit REAL DEFAULT 0.0;");
     }
 
-    // Check and add icon column if missing
     const hasIconColumn = tableInfo.some((col) => col.name === 'icon');
     if (!hasIconColumn) {
       db.execSync("ALTER TABLE categories ADD COLUMN icon TEXT;");

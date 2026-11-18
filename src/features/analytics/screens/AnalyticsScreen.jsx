@@ -3,30 +3,23 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Modal 
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
 import { getCategorySpendingForMonth, getMonthlyTotals } from '../../../api/analyticsRepo';
-import { updateCategoryBudget } from '../../../api/categoriesRepo';
+import { getAllCategories, updateCategoryBudget } from '../../../api/categoriesRepo';
 import { ThemeContext } from '../../../context/ThemeContext';
 
-// Palette of distinct, high-contrast flat colors to prevent duplicate category colors
 const DISTINCT_PALETTE = [
-  '#8B5CF6', // Purple
-  '#3B82F6', // Blue
-  '#10B981', // Emerald Green
-  '#F59E0B', // Amber
-  '#EF4444', // Red
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#84CC16', // Lime
-  '#F97316', // Orange
-  '#6366F1', // Indigo
+  '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', 
+  '#EF4444', '#EC4899', '#06B6D4', '#84CC16', 
+  '#F97316', '#6366F1'
 ];
 
 export default function AnalyticsScreen({ navigation }) {
   const { theme } = useContext(ThemeContext);
 
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [cycleMode, setCycleMode] = useState('full'); // 'full' | 'first_half' (1-15) | 'second_half' (16-EOM)
   const [breakdown, setBreakdown] = useState([]);
   const [totals, setTotals] = useState({ income: 0, expense: 0 });
-  const [activeTab, setActiveTab] = useState('budgets'); // 'budgets' | 'charts' | 'breakdown'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'budgets' | 'charts' | 'breakdown'
 
   // Interactive Donut Center Focus State
   const [focusedSlice, setFocusedSlice] = useState(null);
@@ -36,18 +29,59 @@ export default function AnalyticsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [budgetInput, setBudgetInput] = useState('');
 
-  const monthString = currentDate.toISOString().slice(0, 7); // 'YYYY-MM'
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+  const monthString = `${year}-${month}`; // 'YYYY-MM'
+  
   const monthLabel = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const cycleLabel = cycleMode === 'full' 
+    ? monthLabel 
+    : cycleMode === 'first_half' 
+      ? `1st Payday (1–15), ${monthLabel}` 
+      : `15th Payday (16–EOM), ${monthLabel}`;
 
   useEffect(() => {
     loadAnalytics();
-  }, [monthString]);
+  }, [monthString, cycleMode]);
 
   const loadAnalytics = () => {
-    const fetchedBreakdown = getCategorySpendingForMonth(monthString);
-    setBreakdown(fetchedBreakdown);
-    setTotals(getMonthlyTotals(monthString));
-    setFocusedSlice(null); // Reset focus on month change
+    let startDay = 1;
+    let endDay = 31;
+
+    if (cycleMode === 'first_half') {
+      startDay = 1;
+      endDay = 15;
+    } else if (cycleMode === 'second_half') {
+      startDay = 16;
+      endDay = 31;
+    }
+
+    // 1. Fetch filtered spending breakdown and totals directly from DB
+    const fetchedBreakdown = getCategorySpendingForMonth(monthString, startDay, endDay) || [];
+    const fetchedTotals = getMonthlyTotals(monthString, startDay, endDay) || { income: 0, expense: 0 };
+    const allCategories = getAllCategories() || [];
+
+    // 2. Merge with all categories so categories with 0 spending in this cycle still show up in budget lists
+    const spendingMap = {};
+    fetchedBreakdown.forEach(item => {
+      spendingMap[item.category_id] = item;
+    });
+
+    const mergedBreakdown = allCategories.map(cat => {
+      const existing = spendingMap[cat.id];
+      return {
+        category_id: cat.id,
+        category_name: cat.name,
+        type: cat.type,
+        total: existing ? existing.total : 0,
+        color: cat.color,
+        budget_limit: cat.budget_limit || 0
+      };
+    });
+
+    setBreakdown(mergedBreakdown);
+    setTotals(fetchedTotals);
+    setFocusedSlice(null);
   };
 
   const changeMonth = (direction) => {
@@ -73,27 +107,19 @@ export default function AnalyticsScreen({ navigation }) {
   const totalExpense = totals.expense;
   const totalIncome = totals.income;
   const netSavings = totalIncome - totalExpense;
+  const savingsRate = totalIncome > 0 ? ((netSavings / totalIncome) * 100).toFixed(1) : 0;
 
   const totalFlow = totalIncome + totalExpense;
   const incomePercent = totalFlow > 0 ? (totalIncome / totalFlow) * 100 : 0;
   const expensePercent = totalFlow > 0 ? (totalExpense / totalFlow) * 100 : 0;
 
-  // Filter expenses and assign guaranteed unique colors if duplicates or defaults exist
   const expenseBreakdown = breakdown
     .filter((item) => item.type === 'expense')
-    .map((item, index) => {
-      const itemColor =
-        item.color && item.color !== '#8B5CF6'
-          ? item.color
-          : DISTINCT_PALETTE[index % DISTINCT_PALETTE.length];
+    .map((item, index) => ({
+      ...item,
+      displayColor: item.color && item.color !== '#8B5CF6' ? item.color : DISTINCT_PALETTE[index % DISTINCT_PALETTE.length],
+    }));
 
-      return {
-        ...item,
-        displayColor: itemColor,
-      };
-    });
-
-  // Calculate Financial Insight Text
   const topCategory = expenseBreakdown.length > 0
     ? [...expenseBreakdown].sort((a, b) => (b.total || 0) - (a.total || 0))[0]
     : null;
@@ -102,15 +128,15 @@ export default function AnalyticsScreen({ navigation }) {
     ? ((topCategory.total / totalExpense) * 100).toFixed(0)
     : 0;
 
-  // Format Data for Gifted Pie Chart with interactive press handlers
-  const pieData = expenseBreakdown.map((item) => ({
-    value: item.total || 0,
-    color: item.displayColor,
-    text: `${item.category_name}`,
-    onPress: () => setFocusedSlice(item),
-  }));
+  const pieData = expenseBreakdown
+    .filter(item => item.total > 0)
+    .map((item) => ({
+      value: item.total || 0,
+      color: item.displayColor,
+      text: item.category_name,
+      onPress: () => setFocusedSlice(item),
+    }));
 
-  // Format Data for Gifted Bar Chart
   const barData = [
     {
       value: totalIncome,
@@ -140,35 +166,91 @@ export default function AnalyticsScreen({ navigation }) {
 
       {/* Month Switcher Header */}
       <View style={[styles.monthPicker, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-        <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
+        <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.monthLabel, { color: theme.text }]}>{monthLabel}</Text>
-        <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
+        <Text style={[styles.monthLabel, { color: theme.text }]}>{cycleLabel}</Text>
+        <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn} activeOpacity={0.7}>
           <Ionicons name="chevron-forward" size={20} color={theme.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* --- PAYDAY CYCLE TOGGLE PILL --- */}
+      <View style={[styles.cycleToggleRow, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+        <TouchableOpacity
+          style={[styles.cycleBtn, cycleMode === 'full' && { backgroundColor: theme.primary }]}
+          onPress={() => setCycleMode('full')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.cycleBtnText, { color: theme.subText }, cycleMode === 'full' && styles.activeCycleText]}>
+            Full Month
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.cycleBtn, cycleMode === 'first_half' && { backgroundColor: theme.primary }]}
+          onPress={() => setCycleMode('first_half')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.cycleBtnText, { color: theme.subText }, cycleMode === 'first_half' && styles.activeCycleText]}>
+            1st Payday (1–15)
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.cycleBtn, cycleMode === 'second_half' && { backgroundColor: theme.primary }]}
+          onPress={() => setCycleMode('second_half')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.cycleBtnText, { color: theme.subText }, cycleMode === 'second_half' && styles.activeCycleText]}>
+            2nd Payday (16–EOM)
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-        {/* --- SMART FINANCIAL HEALTH INSIGHT BANNER --- */}
-        {totalExpense > 0 && topCategory && (
-          <View style={[styles.insightCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-            <Ionicons name="bulb-outline" size={18} color={theme.primary} style={{ marginTop: 2 }} />
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Text style={[styles.insightTitle, { color: theme.text }]}>Smart Insight</Text>
-              <Text style={[styles.insightText, { color: theme.subText }]}>
-                Your largest expense this month is <Text style={{ fontWeight: 'bold', color: theme.text }}>{topCategory.category_name}</Text>, taking up <Text style={{ fontWeight: 'bold', color: theme.primary }}>{topCategoryPercent}%</Text> of total spending.
+        {/* --- VIEW 0: OVERVIEW & HEALTH SCORECARD --- */}
+        {activeTab === 'overview' && (
+          <>
+            <View style={[styles.healthCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+              <View style={styles.healthHeaderRow}>
+                <View style={styles.healthBadgeContainer}>
+                  <Ionicons 
+                    name={netSavings >= 0 ? "shield-checkmark" : "warning-outline"} 
+                    size={20} 
+                    color={netSavings >= 0 ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[styles.healthBadgeText, { color: netSavings >= 0 ? "#10B981" : "#EF4444" }]}>
+                    {netSavings >= 0 ? 'Healthy Cash Flow' : 'Deficit Alert'}
+                  </Text>
+                </View>
+                <Text style={[styles.savingsRateText, { color: theme.subText }]}>
+                  Savings Rate: <Text style={{ fontWeight: '700', color: netSavings >= 0 ? '#10B981' : '#EF4444' }}>{savingsRate}%</Text>
+                </Text>
+              </View>
+
+              <Text style={[styles.healthDescription, { color: theme.subText }]}>
+                {netSavings >= 0 
+                  ? `You are keeping ₱${netSavings.toLocaleString('en-US', { minimumFractionDigits: 2 })} during this cycle. Great discipline!`
+                  : `You have spent ₱${Math.abs(netSavings).toLocaleString('en-US', { minimumFractionDigits: 2 })} more than your income in this cycle.`}
               </Text>
             </View>
-          </View>
-        )}
 
-        {/* --- VIEW 1: BUDGETS VIEW --- */}
-        {activeTab === 'budgets' && (
-          <>
+            {totalExpense > 0 && topCategory && topCategory.total > 0 && (
+              <View style={[styles.insightCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+                <Ionicons name="bulb-outline" size={18} color={theme.primary} style={{ marginTop: 2 }} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={[styles.insightTitle, { color: theme.text }]}>Spending Spotlight</Text>
+                  <Text style={[styles.insightText, { color: theme.subText }]}>
+                    Your largest expense is <Text style={{ fontWeight: 'bold', color: theme.text }}>{topCategory.category_name}</Text>, taking up <Text style={{ fontWeight: 'bold', color: theme.primary }}>{topCategoryPercent}%</Text> of cycle spending.
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-              <Text style={[styles.cardHeader, { color: theme.subText }]}>Monthly Cash Flow</Text>
+              <Text style={[styles.cardHeader, { color: theme.subText }]}>Cycle Cash Flow Breakdown</Text>
 
               <View style={styles.statRow}>
                 <View>
@@ -198,18 +280,34 @@ export default function AnalyticsScreen({ navigation }) {
               </View>
             </View>
 
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Category Budgets & Spending</Text>
+            <TouchableOpacity 
+              style={[styles.quickJumpBtn, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
+              onPress={() => setActiveTab('budgets')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="speedometer-outline" size={16} color={theme.primary} />
+              <Text style={[styles.quickJumpText, { color: theme.text }]}>Manage Category Budgets & Limits</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.subText} />
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* --- VIEW 1: BUDGETS VIEW --- */}
+        {activeTab === 'budgets' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Category Budgets & Spending Limits</Text>
 
             {expenseBreakdown.length === 0 ? (
               <View style={[styles.emptyCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                 <Ionicons name="receipt-outline" size={36} color={theme.subText} style={{ marginBottom: 8 }} />
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>No Expenses Logged</Text>
                 <Text style={[styles.emptySubText, { color: theme.subText }]}>
-                  You haven't recorded any expenses for {monthLabel} yet.
+                  You haven't recorded any expenses for this cycle yet.
                 </Text>
                 <TouchableOpacity
                   style={[styles.addTransactionBtn, { backgroundColor: theme.primary }]}
                   onPress={() => navigation?.navigate?.('Dashboard')}
+                  activeOpacity={0.85}
                 >
                   <Ionicons name="add" size={16} color="#FFFFFF" />
                   <Text style={styles.addTransactionBtnText}>Add Transaction</Text>
@@ -244,7 +342,7 @@ export default function AnalyticsScreen({ navigation }) {
                         <View style={[styles.colorDot, { backgroundColor: item.displayColor }]} />
                         <Text style={[styles.catName, { color: theme.text }]}>{item.category_name}</Text>
                       </View>
-                      <TouchableOpacity onPress={() => handleOpenBudgetModal(item)} style={styles.budgetBtn}>
+                      <TouchableOpacity onPress={() => handleOpenBudgetModal(item)} style={styles.budgetBtn} activeOpacity={0.8}>
                         <Text style={[styles.budgetBtnText, { color: theme.primary }]}>
                           {budgetLimit > 0 ? `Budget: ₱${budgetLimit.toLocaleString()}` : '+ Set Budget'}
                         </Text>
@@ -278,12 +376,12 @@ export default function AnalyticsScreen({ navigation }) {
           </>
         )}
 
-        {/* --- VIEW 2: CHARTS VIEW (WITH TAP TOOLTIPS) --- */}
+        {/* --- VIEW 2: CHARTS VIEW --- */}
         {activeTab === 'charts' && (
           <View style={styles.viewSection}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Visual Expense Distribution</Text>
 
-            {expenseBreakdown.length === 0 ? (
+            {expenseBreakdown.filter(i => i.total > 0).length === 0 ? (
               <View style={[styles.emptyCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                 <Ionicons name="pie-chart-outline" size={36} color={theme.subText} style={{ marginBottom: 8 }} />
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>No Chart Data Available</Text>
@@ -293,6 +391,7 @@ export default function AnalyticsScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.addTransactionBtn, { backgroundColor: theme.primary }]}
                   onPress={() => navigation?.navigate?.('Dashboard')}
+                  activeOpacity={0.85}
                 >
                   <Ionicons name="add" size={16} color="#FFFFFF" />
                   <Text style={styles.addTransactionBtnText}>Add Transaction</Text>
@@ -300,7 +399,6 @@ export default function AnalyticsScreen({ navigation }) {
               </View>
             ) : (
               <>
-                {/* 1. INTERACTIVE DONUT PIE CHART */}
                 <View style={[styles.chartCard, { backgroundColor: theme.cardBg, borderColor: theme.border, alignItems: 'center' }]}>
                   <Text style={[styles.cardHeader, { color: theme.subText, alignSelf: 'flex-start' }]}>
                     Category Share Donut <Text style={{ fontSize: 10, fontStyle: 'italic' }}>(Tap slice to inspect)</Text>
@@ -334,15 +432,15 @@ export default function AnalyticsScreen({ navigation }) {
                     />
                   </View>
 
-                  {/* Legend Grid */}
                   <View style={styles.legendContainer}>
-                    {expenseBreakdown.map((item, idx) => {
+                    {expenseBreakdown.filter(i => i.total > 0).map((item, idx) => {
                       const percent = totalExpense > 0 ? (item.total / totalExpense) * 100 : 0;
                       return (
                         <TouchableOpacity
                           key={idx}
                           style={styles.legendItem}
                           onPress={() => setFocusedSlice(item)}
+                          activeOpacity={0.7}
                         >
                           <View style={[styles.legendDot, { backgroundColor: item.displayColor }]} />
                           <Text style={[styles.legendText, { color: theme.text }]}>
@@ -354,7 +452,6 @@ export default function AnalyticsScreen({ navigation }) {
                   </View>
                 </View>
 
-                {/* 2. SOLID BAR CHART */}
                 <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 24 }]}>Cash Flow Comparison</Text>
 
                 <View style={[styles.chartCard, { backgroundColor: theme.cardBg, borderColor: theme.border, paddingBottom: 20 }]}>
@@ -389,7 +486,7 @@ export default function AnalyticsScreen({ navigation }) {
           <View style={styles.viewSection}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Category Breakdown & Share</Text>
 
-            {expenseBreakdown.length === 0 ? (
+            {expenseBreakdown.filter(i => i.total > 0).length === 0 ? (
               <View style={[styles.emptyCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
                 <Ionicons name="list-outline" size={36} color={theme.subText} style={{ marginBottom: 8 }} />
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>No Breakdown Records</Text>
@@ -399,6 +496,7 @@ export default function AnalyticsScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.addTransactionBtn, { backgroundColor: theme.primary }]}
                   onPress={() => navigation?.navigate?.('Dashboard')}
+                  activeOpacity={0.85}
                 >
                   <Ionicons name="add" size={16} color="#FFFFFF" />
                   <Text style={styles.addTransactionBtnText}>Add Transaction</Text>
@@ -406,6 +504,7 @@ export default function AnalyticsScreen({ navigation }) {
               </View>
             ) : (
               expenseBreakdown
+                .filter(i => i.total > 0)
                 .sort((a, b) => (b.total || 0) - (a.total || 0))
                 .map((item, index) => {
                   const spent = item.total || 0;
@@ -417,7 +516,7 @@ export default function AnalyticsScreen({ navigation }) {
                         <View style={[styles.colorDot, { backgroundColor: item.displayColor }]} />
                         <View>
                           <Text style={[styles.catName, { color: theme.text }]}>{item.category_name}</Text>
-                          <Text style={[styles.shareText, { color: theme.subText }]}>{sharePercent.toFixed(1)}% of total expenses</Text>
+                          <Text style={[styles.shareText, { color: theme.subText }]}>{sharePercent.toFixed(1)}% of cycle expenses</Text>
                         </View>
                       </View>
                       <Text style={[styles.catAmount, { color: theme.text }]}>
@@ -434,10 +533,22 @@ export default function AnalyticsScreen({ navigation }) {
       {/* --- FLOATING PILL VIEW SWITCHER --- */}
       <View style={[styles.floatingBar, { backgroundColor: theme.cardBg + 'E6', borderColor: theme.border }]}>
         <TouchableOpacity
+          style={[styles.floatingBtn, activeTab === 'overview' && { backgroundColor: theme.primary }]}
+          onPress={() => setActiveTab('overview')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="speedometer-outline" size={14} color={activeTab === 'overview' ? '#FFFFFF' : theme.subText} />
+          <Text style={[styles.floatingBtnText, { color: theme.subText }, activeTab === 'overview' && styles.activeBtnText]}>
+            Overview
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.floatingBtn, activeTab === 'budgets' && { backgroundColor: theme.primary }]}
           onPress={() => setActiveTab('budgets')}
+          activeOpacity={0.8}
         >
-          <Ionicons name="wallet-outline" size={15} color={activeTab === 'budgets' ? '#FFFFFF' : theme.subText} />
+          <Ionicons name="wallet-outline" size={14} color={activeTab === 'budgets' ? '#FFFFFF' : theme.subText} />
           <Text style={[styles.floatingBtnText, { color: theme.subText }, activeTab === 'budgets' && styles.activeBtnText]}>
             Budgets
           </Text>
@@ -446,8 +557,9 @@ export default function AnalyticsScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.floatingBtn, activeTab === 'charts' && { backgroundColor: theme.primary }]}
           onPress={() => setActiveTab('charts')}
+          activeOpacity={0.8}
         >
-          <Ionicons name="pie-chart-outline" size={15} color={activeTab === 'charts' ? '#FFFFFF' : theme.subText} />
+          <Ionicons name="pie-chart-outline" size={14} color={activeTab === 'charts' ? '#FFFFFF' : theme.subText} />
           <Text style={[styles.floatingBtnText, { color: theme.subText }, activeTab === 'charts' && styles.activeBtnText]}>
             Charts
           </Text>
@@ -456,18 +568,19 @@ export default function AnalyticsScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.floatingBtn, activeTab === 'breakdown' && { backgroundColor: theme.primary }]}
           onPress={() => setActiveTab('breakdown')}
+          activeOpacity={0.8}
         >
-          <Ionicons name="list-outline" size={15} color={activeTab === 'breakdown' ? '#FFFFFF' : theme.subText} />
+          <Ionicons name="list-outline" size={14} color={activeTab === 'breakdown' ? '#FFFFFF' : theme.subText} />
           <Text style={[styles.floatingBtnText, { color: theme.subText }, activeTab === 'breakdown' && styles.activeBtnText]}>
-            Breakdown
+            Details
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Set Budget Modal */}
-      <Modal visible={budgetModalVisible} animationType="fade" transparent={true}>
+      <Modal visible={budgetModalVisible} animationType="fade" transparent={true} onRequestClose={() => setBudgetModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { backgroundColor: theme.cardBg }]}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               Set Budget for {selectedCategory?.category_name}
             </Text>
@@ -482,10 +595,10 @@ export default function AnalyticsScreen({ navigation }) {
             />
 
             <View style={styles.modalActionRow}>
-              <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={() => setBudgetModalVisible(false)}>
-                <Text style={[styles.cancelBtnText, { color: theme.subText }]}>Cancel</Text>
+              <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border, backgroundColor: theme.inputBg }]} onPress={() => setBudgetModalVisible(false)} activeOpacity={0.8}>
+                <Text style={[styles.cancelBtnText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSaveBudget}>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSaveBudget} activeOpacity={0.85}>
                 <Text style={styles.saveBtnText}>Save Budget</Text>
               </TouchableOpacity>
             </View>
@@ -507,24 +620,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginTop: 10,
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 1,
   },
-  monthLabel: { fontSize: 14, fontWeight: '600' },
+  monthLabel: { fontSize: 13, fontWeight: '600' },
   arrowBtn: { padding: 2 },
+
+  cycleToggleRow: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 12,
+    gap: 4,
+  },
+  cycleBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cycleBtnText: { fontSize: 11, fontWeight: '600' },
+  activeCycleText: { color: '#FFFFFF', fontWeight: '700' },
+
   scrollContent: { paddingBottom: 95 },
+  
+  healthCard: { padding: 14, borderRadius: 12, marginBottom: 12, borderWidth: 1 },
+  healthHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  healthBadgeContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  healthBadgeText: { fontSize: 13, fontWeight: '700' },
+  savingsRateText: { fontSize: 11 },
+  healthDescription: { fontSize: 12, lineHeight: 17 },
+
   insightCard: {
     flexDirection: 'row',
-    padding: 10,
-    borderRadius: 10,
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
     alignItems: 'flex-start',
   },
-  insightTitle: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 2 },
-  insightText: { fontSize: 11, lineHeight: 15 },
-  summaryCard: { padding: 14, borderRadius: 12, marginBottom: 14, borderWidth: 1 },
-  cardHeader: { fontSize: 11, textTransform: 'uppercase', fontWeight: '700', marginBottom: 8 },
+  insightTitle: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 2, letterSpacing: 0.5 },
+  insightText: { fontSize: 11.5, lineHeight: 16 },
+
+  quickJumpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  quickJumpText: { fontSize: 12, fontWeight: '600' },
+
+  summaryCard: { padding: 14, borderRadius: 12, marginBottom: 12, borderWidth: 1 },
+  cardHeader: { fontSize: 11, textTransform: 'uppercase', fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   statLabel: { fontSize: 11, marginBottom: 2 },
   statValue: { fontSize: 16, fontWeight: '700' },
@@ -536,6 +687,7 @@ const styles = StyleSheet.create({
   netRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1 },
   netLabel: { fontSize: 12, fontWeight: '500' },
   netValue: { fontSize: 14, fontWeight: '700' },
+
   sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10 },
   categoryCard: { padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
@@ -549,6 +701,7 @@ const styles = StyleSheet.create({
   budgetSubText: { fontSize: 10, fontWeight: '500' },
   progressTrack: { height: 5, borderRadius: 2.5, overflow: 'hidden', marginBottom: 2 },
   progressFill: { height: '100%', borderRadius: 2.5 },
+
   emptyCard: { padding: 24, borderRadius: 12, alignItems: 'center', borderWidth: 1, marginVertical: 8 },
   emptyTitle: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
   emptySubText: { fontSize: 11, textAlign: 'center', marginBottom: 12 },
@@ -561,14 +714,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addTransactionBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
+
   viewSection: { marginTop: 2 },
   chartCard: { padding: 14, borderRadius: 12, borderWidth: 1 },
   legendContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2 },
   legendDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
   legendText: { fontSize: 11, fontWeight: '500' },
+
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1 },
   shareText: { fontSize: 10, marginTop: 1 },
+
   floatingBar: {
     position: 'absolute',
     bottom: 16,
@@ -587,21 +743,22 @@ const styles = StyleSheet.create({
   floatingBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
+    gap: 4,
+    paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 18,
   },
-  floatingBtnText: { fontSize: 12, fontWeight: '600' },
+  floatingBtnText: { fontSize: 11, fontWeight: '600' },
   activeBtnText: { color: '#FFFFFF', fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContainer: { width: '100%', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#334155' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContainer: { width: '100%', maxWidth: 320, borderRadius: 16, padding: 18, borderWidth: 1 },
   modalTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
-  label: { fontSize: 12, marginBottom: 4 },
-  input: { padding: 10, borderRadius: 8, fontSize: 14, borderWidth: 1, marginBottom: 16 },
+  label: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.8 },
+  input: { padding: 12, borderRadius: 10, fontSize: 13, borderWidth: 1, marginBottom: 16 },
   modalActionRow: { flexDirection: 'row', gap: 8 },
-  cancelBtn: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+  cancelBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   cancelBtnText: { fontWeight: '600', fontSize: 13 },
-  saveBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
+  saveBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' },
   saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
 });

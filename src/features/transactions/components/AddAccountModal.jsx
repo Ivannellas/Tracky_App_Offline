@@ -78,8 +78,9 @@ export default function AddAccountModal({ visible, onClose, onSuccess }) {
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
+        {/* Updated behavior to match CategoryManagerScreen so Android pushes the sheet up correctly */}
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
           <View style={[styles.modalContainer, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>

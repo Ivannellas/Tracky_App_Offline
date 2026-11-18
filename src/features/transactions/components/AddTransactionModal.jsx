@@ -103,222 +103,221 @@ export default function AddTransactionModal({ visible, initialData, onClose, onS
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardView}
-        >
-          <View style={[styles.modalContent, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-            
-            {/* Header Row */}
-            <View style={styles.headerRow}>
-              <View style={styles.titleContainer}>
-                <View style={[styles.titleIndicator, { backgroundColor: activeColor }]} />
-                <Text style={[styles.modalTitle, { color: theme.text }]}>
-                  {initialData ? 'Duplicate Transaction' : 'New Transaction'}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.inputBg }]} activeOpacity={0.8}>
-                <Ionicons name="close" size={18} color={theme.text} />
-              </TouchableOpacity>
+      {/* Updated behavior to match CategoryManagerScreen so Android pushes the sheet up correctly */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+      >
+        <View style={[styles.modalContent, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+          
+          {/* Header Row */}
+          <View style={styles.headerRow}>
+            <View style={styles.titleContainer}>
+              <View style={[styles.titleIndicator, { backgroundColor: activeColor }]} />
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {initialData ? 'Duplicate Transaction' : 'New Transaction'}
+              </Text>
             </View>
-
-            {/* Type Selector Tabs */}
-            <View style={[styles.typeRow, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-              <TouchableOpacity
-                style={[styles.typeTab, type === 'expense' && styles.activeExpense]}
-                onPress={() => loadCategories('expense')}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="arrow-down-circle-outline" size={15} color={type === 'expense' ? '#FFFFFF' : theme.subText} style={{ marginRight: 6 }} />
-                <Text style={[styles.typeTabText, { color: theme.subText }, type === 'expense' && styles.activeText]}>Expense</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeTab, type === 'income' && styles.activeIncome]}
-                onPress={() => loadCategories('income')}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="arrow-up-circle-outline" size={15} color={type === 'income' ? '#FFFFFF' : theme.subText} style={{ marginRight: 6 }} />
-                <Text style={[styles.typeTabText, { color: theme.subText }, type === 'income' && styles.activeText]}>Income</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView 
-              showsVerticalScrollIndicator={true} 
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="none"
-            >
-              {/* Hero Amount Input Section */}
-              <View style={[styles.heroAmountCard, { backgroundColor: theme.inputBg, borderColor: amount ? activeColor : theme.border }]}>
-                <Text style={[styles.currencySymbol, { color: activeColor }]}>₱</Text>
-                <TextInput
-                  style={[styles.heroInput, { color: theme.text }]}
-                  placeholder="0.00"
-                  placeholderTextColor={theme.subText}
-                  keyboardType="numeric"
-                  value={amount}
-                  onChangeText={setAmount}
-                  autoFocus={!initialData}
-                />
-              </View>
-
-              {/* Date Selection Row */}
-              <Text style={[styles.label, { color: theme.subText }]}>Transaction Date</Text>
-              <View style={styles.dateSelectorRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.dateChip,
-                    { backgroundColor: theme.inputBg, borderColor: theme.border },
-                    selectedDate === todayStr && { backgroundColor: theme.primary, borderColor: theme.primary }
-                  ]}
-                  onPress={() => { setSelectedDate(todayStr); setShowCustomDateInput(false); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.dateChipText, { color: theme.subText }, selectedDate === todayStr && styles.selectedChipText]}>
-                    Today
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.dateChip,
-                    { backgroundColor: theme.inputBg, borderColor: theme.border },
-                    selectedDate === yesterdayStr && { backgroundColor: theme.primary, borderColor: theme.primary }
-                  ]}
-                  onPress={() => { setSelectedDate(yesterdayStr); setShowCustomDateInput(false); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.dateChipText, { color: theme.subText }, selectedDate === yesterdayStr && styles.selectedChipText]}>
-                    Yesterday
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.dateChip,
-                    { backgroundColor: theme.inputBg, borderColor: theme.border },
-                    (selectedDate !== todayStr && selectedDate !== yesterdayStr || showCustomDateInput) && { backgroundColor: theme.primary, borderColor: theme.primary }
-                  ]}
-                  onPress={() => setShowCustomDateInput(true)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="calendar-outline" size={13} color={(selectedDate !== todayStr && selectedDate !== yesterdayStr || showCustomDateInput) ? '#FFFFFF' : theme.subText} style={{ marginRight: 4 }} />
-                  <Text style={[styles.dateChipText, { color: theme.subText }, (selectedDate !== todayStr && selectedDate !== yesterdayStr || showCustomDateInput) && styles.selectedChipText]}>
-                    {selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Custom Date'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Conditional Custom Date Text Input */}
-              {showCustomDateInput && (
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border, marginTop: 6 }]}
-                  placeholder="YYYY-MM-DD (e.g. 2026-10-20)"
-                  placeholderTextColor={theme.subText}
-                  value={selectedDate}
-                  onChangeText={setSelectedDate}
-                />
-              )}
-
-              {/* Account Selection Grid */}
-              <Text style={[styles.label, { color: theme.subText }]}>Select Wallet / Account</Text>
-              <View style={styles.gridContainer}>
-                {accounts.map((acc) => {
-                  const isSelected = selectedAccount === acc.id;
-                  return (
-                    <TouchableOpacity
-                      key={acc.id}
-                      style={[
-                        styles.gridChip, 
-                        { backgroundColor: theme.inputBg, borderColor: theme.border },
-                        isSelected && { backgroundColor: theme.primary, borderColor: theme.primary, elevation: 2 }
-                      ]}
-                      onPress={() => setSelectedAccount(acc.id)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons 
-                        name={acc.icon || 'wallet-outline'} 
-                        size={13} 
-                        color={isSelected ? '#FFFFFF' : theme.subText} 
-                        style={{ marginRight: 4 }} 
-                      />
-                      <Text style={[styles.chipText, { color: theme.subText }, isSelected && styles.selectedChipText]} numberOfLines={1}>
-                        {acc.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Category Selection Grid */}
-              <Text style={[styles.label, { color: theme.subText }]}>Category</Text>
-              <View style={styles.gridContainer}>
-                {categories.map((cat) => {
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={[
-                        styles.gridChip, 
-                        { backgroundColor: theme.inputBg, borderColor: theme.border },
-                        isSelected && { backgroundColor: activeColor, borderColor: activeColor, elevation: 2 }
-                      ]}
-                      onPress={() => setSelectedCategory(cat.id)}
-                      activeOpacity={0.8}
-                    >
-                      {cat.icon ? (
-                        <Ionicons 
-                          name={cat.icon} 
-                          size={13} 
-                          color={isSelected ? '#FFFFFF' : (cat.color || theme.subText)} 
-                          style={{ marginRight: 5 }} 
-                        />
-                      ) : null}
-                      <Text style={[styles.chipText, { color: theme.subText }, isSelected && styles.selectedChipText]} numberOfLines={1}>
-                        {cat.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Note Input */}
-              <Text style={[styles.label, { color: theme.subText }]}>Note (Optional)</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-                placeholder="Add details..."
-                placeholderTextColor={theme.subText}
-                value={note}
-                onChangeText={setNote}
-              />
-
-              {/* Action Buttons */}
-              <View style={styles.buttonRow}>
-                <TouchableOpacity 
-                  style={[styles.cancelButton, { backgroundColor: theme.inputBg, borderColor: theme.border }]} 
-                  onPress={onClose}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.saveButton, { backgroundColor: activeColor }]} 
-                  onPress={handleSave}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.saveButtonText}>
-                    {initialData ? 'Save Copy' : 'Save Transaction'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-
+            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.inputBg }]} activeOpacity={0.8}>
+              <Ionicons name="close" size={18} color={theme.text} />
+            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
-      </View>
+
+          {/* Type Selector Tabs */}
+          <View style={[styles.typeRow, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+            <TouchableOpacity
+              style={[styles.typeTab, type === 'expense' && styles.activeExpense]}
+              onPress={() => loadCategories('expense')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="arrow-down-circle-outline" size={15} color={type === 'expense' ? '#FFFFFF' : theme.subText} style={{ marginRight: 6 }} />
+              <Text style={[styles.typeTabText, { color: theme.subText }, type === 'expense' && styles.activeText]}>Expense</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.typeTab, type === 'income' && styles.activeIncome]}
+              onPress={() => loadCategories('income')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="arrow-up-circle-outline" size={15} color={type === 'income' ? '#FFFFFF' : theme.subText} style={{ marginRight: 6 }} />
+              <Text style={[styles.typeTabText, { color: theme.subText }, type === 'income' && styles.activeText]}>Income</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView 
+            showsVerticalScrollIndicator={true} 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="none"
+          >
+            {/* Hero Amount Input Section */}
+            <View style={[styles.heroAmountCard, { backgroundColor: theme.inputBg, borderColor: amount ? activeColor : theme.border }]}>
+              <Text style={[styles.currencySymbol, { color: activeColor }]}>₱</Text>
+              <TextInput
+                style={[styles.heroInput, { color: theme.text }]}
+                placeholder="0.00"
+                placeholderTextColor={theme.subText}
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+                autoFocus={!initialData}
+              />
+            </View>
+
+            {/* Date Selection Row */}
+            <Text style={[styles.label, { color: theme.subText }]}>Transaction Date</Text>
+            <View style={styles.dateSelectorRow}>
+              <TouchableOpacity
+                style={[
+                  styles.dateChip,
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  selectedDate === todayStr && { backgroundColor: theme.primary, borderColor: theme.primary }
+                ]}
+                onPress={() => { setSelectedDate(todayStr); setShowCustomDateInput(false); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.dateChipText, { color: theme.subText }, selectedDate === todayStr && styles.selectedChipText]}>
+                  Today
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.dateChip,
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  selectedDate === yesterdayStr && { backgroundColor: theme.primary, borderColor: theme.primary }
+                ]}
+                onPress={() => { setSelectedDate(yesterdayStr); setShowCustomDateInput(false); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.dateChipText, { color: theme.subText }, selectedDate === yesterdayStr && styles.selectedChipText]}>
+                  Yesterday
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.dateChip,
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  (selectedDate !== todayStr && selectedDate !== yesterdayStr || showCustomDateInput) && { backgroundColor: theme.primary, borderColor: theme.primary }
+                ]}
+                onPress={() => setShowCustomDateInput(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="calendar-outline" size={13} color={(selectedDate !== todayStr && selectedDate !== yesterdayStr || showCustomDateInput) ? '#FFFFFF' : theme.subText} style={{ marginRight: 4 }} />
+                <Text style={[styles.dateChipText, { color: theme.subText }, (selectedDate !== todayStr && selectedDate !== yesterdayStr || showCustomDateInput) && styles.selectedChipText]}>
+                  {selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Custom Date'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Conditional Custom Date Text Input */}
+            {showCustomDateInput && (
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border, marginTop: 6 }]}
+                placeholder="YYYY-MM-DD (e.g. 2026-10-20)"
+                placeholderTextColor={theme.subText}
+                value={selectedDate}
+                onChangeText={setSelectedDate}
+              />
+            )}
+
+            {/* Account Selection Grid */}
+            <Text style={[styles.label, { color: theme.subText }]}>Select Wallet / Account</Text>
+            <View style={styles.gridContainer}>
+              {accounts.map((acc) => {
+                const isSelected = selectedAccount === acc.id;
+                return (
+                  <TouchableOpacity
+                    key={acc.id}
+                    style={[
+                      styles.gridChip, 
+                      { backgroundColor: theme.inputBg, borderColor: theme.border },
+                      isSelected && { backgroundColor: theme.primary, borderColor: theme.primary, elevation: 2 }
+                    ]}
+                    onPress={() => setSelectedAccount(acc.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons 
+                      name={acc.icon || 'wallet-outline'} 
+                      size={13} 
+                      color={isSelected ? '#FFFFFF' : theme.subText} 
+                      style={{ marginRight: 4 }} 
+                    />
+                    <Text style={[styles.chipText, { color: theme.subText }, isSelected && styles.selectedChipText]} numberOfLines={1}>
+                      {acc.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Category Selection Grid */}
+            <Text style={[styles.label, { color: theme.subText }]}>Category</Text>
+            <View style={styles.gridContainer}>
+              {categories.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.gridChip, 
+                      { backgroundColor: theme.inputBg, borderColor: theme.border },
+                      isSelected && { backgroundColor: activeColor, borderColor: activeColor, elevation: 2 }
+                    ]}
+                    onPress={() => setSelectedCategory(cat.id)}
+                    activeOpacity={0.8}
+                  >
+                    {cat.icon ? (
+                      <Ionicons 
+                        name={cat.icon} 
+                        size={13} 
+                        color={isSelected ? '#FFFFFF' : (cat.color || theme.subText)} 
+                        style={{ marginRight: 5 }} 
+                      />
+                    ) : null}
+                    <Text style={[styles.chipText, { color: theme.subText }, isSelected && styles.selectedChipText]} numberOfLines={1}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Note Input */}
+            <Text style={[styles.label, { color: theme.subText }]}>Note (Optional)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
+              placeholder="Add details..."
+              placeholderTextColor={theme.subText}
+              value={note}
+              onChangeText={setNote}
+            />
+
+            {/* Action Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={[styles.cancelButton, { backgroundColor: theme.inputBg, borderColor: theme.border }]} 
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.saveButton, { backgroundColor: activeColor }]} 
+                onPress={handleSave}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.saveButtonText}>
+                  {initialData ? 'Save Copy' : 'Save Transaction'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -328,10 +327,6 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: 'rgba(0,0,0,0.65)', 
     justifyContent: 'flex-end' 
-  },
-  keyboardView: {
-    width: '100%',
-    justifyContent: 'flex-end',
   },
   modalContent: { 
     borderTopLeftRadius: 26, 
