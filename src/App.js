@@ -3,11 +3,12 @@ import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { initDatabase } from './api/sqLiteClient';
 import { checkForUpdates } from './api/updateChecker';
+import { initNotificationHandler } from './utils/notifications';
 import DashboardScreen from './features/dashboard/screens/DashboardScreen';
 import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen';
 import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen';
 import SettingsScreen from './features/settings/screens/SettingsScreen';
-import CategoryManagerScreen from './features/settings/screens/CategoryManagerScreen'; // 👈 1. Import Category Manager Screen
+import CategoryManagerScreen from './features/settings/screens/CategoryManagerScreen';
 import LockScreen from './components/LockScreen';
 import { ThemeProvider, ThemeContext } from './context/ThemeContext';
 import { AuthProvider, AuthContext } from './context/AuthContext';
@@ -19,6 +20,7 @@ export default function App() {
   useEffect(() => {
     try {
       initDatabase();
+      initNotificationHandler();
       setIsReady(true);
     } catch (error) {
       console.error('Initialization error:', error);

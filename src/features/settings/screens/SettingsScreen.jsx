@@ -1,14 +1,34 @@
-import React, { useState, useContext } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { exportDatabaseBackup, importDatabaseBackup } from '../../../api/backupRepo';
 import { deleteAllTransactions } from '../../../api/transactionsRepo';
 import { ThemeContext } from '../../../context/ThemeContext';
 import { AuthContext } from '../../../context/AuthContext';
+import {
+  scheduleBiMonthlyPaydayReminders,
+  cancelPaydayReminders,
+  scheduleTwiceDailyExpenseReminders,
+  cancelTwiceDailyExpenseReminders,
+  scheduleDailyFinancialAdvice,
+  cancelDailyFinancialAdvice,
+  triggerTestSavingsNotification,
+} from '../../../utils/notifications';
+
+const PAYDAY_REMINDERS_STORAGE_KEY = '@trackly_payday_reminders_enabled';
+const EXPENSE_REMINDERS_STORAGE_KEY = '@trackly_expense_reminders_enabled';
+const ADVICE_REMINDERS_STORAGE_KEY = '@trackly_financial_advice_enabled';
 
 export default function SettingsScreen({ onOpenCategoryManager }) {
   const { theme, themeMode, changeTheme } = useContext(ThemeContext);
   const { hasPinSet, lockApp, removePin } = useContext(AuthContext);
+
+  // Default to true unless explicitly turned off by the user
+  const [paydayRemindersEnabled, setPaydayRemindersEnabled] = useState(true);
+  const [expenseRemindersEnabled, setExpenseRemindersEnabled] = useState(true);
+  const [adviceRemindersEnabled, setAdviceRemindersEnabled] = useState(true);
+  const [isUpdatingReminders, setIsUpdatingReminders] = useState(false);
 
   // Custom Confirmation Modal State
   const [modalConfig, setModalConfig] = useState({
@@ -22,6 +42,221 @@ export default function SettingsScreen({ onOpenCategoryManager }) {
 
   const hideCustomModal = () => {
     setModalConfig(prev => ({ ...prev, visible: false }));
+  };
+
+  useEffect(() => {
+    async function loadAndInitReminderStates() {
+      try {
+        const [savedPayday, savedExpense, savedAdvice] = await Promise.all([
+          AsyncStorage.getItem(PAYDAY_REMINDERS_STORAGE_KEY),
+          AsyncStorage.getItem(EXPENSE_REMINDERS_STORAGE_KEY),
+          AsyncStorage.getItem(ADVICE_REMINDERS_STORAGE_KEY),
+        ]);
+
+        const paydayActive = savedPayday !== null ? JSON.parse(savedPayday) : true;
+        const expenseActive = savedExpense !== null ? JSON.parse(savedExpense) : true;
+        const adviceActive = savedAdvice !== null ? JSON.parse(savedAdvice) : true;
+
+        setPaydayRemindersEnabled(paydayActive);
+        setExpenseRemindersEnabled(expenseActive);
+        setAdviceRemindersEnabled(adviceActive);
+
+        if (savedPayday === null) {
+          await AsyncStorage.setItem(PAYDAY_REMINDERS_STORAGE_KEY, JSON.stringify(true));
+        }
+        if (savedExpense === null) {
+          await AsyncStorage.setItem(EXPENSE_REMINDERS_STORAGE_KEY, JSON.stringify(true));
+        }
+        if (savedAdvice === null) {
+          await AsyncStorage.setItem(ADVICE_REMINDERS_STORAGE_KEY, JSON.stringify(true));
+        }
+
+        // Silently ensure default-enabled schedules are active without interrupting UI
+        if (paydayActive) {
+          await scheduleBiMonthlyPaydayReminders();
+        }
+        if (expenseActive) {
+          await scheduleTwiceDailyExpenseReminders();
+        }
+        if (adviceActive) {
+          await scheduleDailyFinancialAdvice(9, 30);
+        }
+      } catch (error) {
+        console.log('Failed to load reminder preferences:', error);
+      }
+    }
+
+    loadAndInitReminderStates();
+  }, []);
+
+  const handleTogglePaydayReminders = async (nextValue) => {
+    if (isUpdatingReminders) return;
+    setIsUpdatingReminders(true);
+
+    try {
+      if (nextValue) {
+        const result = await scheduleBiMonthlyPaydayReminders();
+        if (!result.ok) {
+          setPaydayRemindersEnabled(false);
+          await AsyncStorage.setItem(PAYDAY_REMINDERS_STORAGE_KEY, JSON.stringify(false));
+          setModalConfig({
+            visible: true,
+            title: 'Reminders Unavailable',
+            message: result.reason || 'Could not enable payday savings reminders.',
+            confirmText: 'OK',
+            isDanger: false,
+            onConfirm: hideCustomModal,
+          });
+          return;
+        }
+
+        setPaydayRemindersEnabled(true);
+        await AsyncStorage.setItem(PAYDAY_REMINDERS_STORAGE_KEY, JSON.stringify(true));
+        setModalConfig({
+          visible: true,
+          title: 'Payday Reminders Active',
+          message: 'You will get a savings nudge on the 1st and 16th of every month at 9:00 AM.',
+          confirmText: 'OK',
+          isDanger: false,
+          onConfirm: hideCustomModal,
+        });
+      } else {
+        await cancelPaydayReminders();
+        setPaydayRemindersEnabled(false);
+        await AsyncStorage.setItem(PAYDAY_REMINDERS_STORAGE_KEY, JSON.stringify(false));
+        setModalConfig({
+          visible: true,
+          title: 'Reminders Paused',
+          message: 'Bi-monthly payday savings reminders have been turned off.',
+          confirmText: 'OK',
+          isDanger: false,
+          onConfirm: hideCustomModal,
+        });
+      }
+    } finally {
+      setIsUpdatingReminders(false);
+    }
+  };
+
+  const handleToggleExpenseReminders = async (nextValue) => {
+    if (isUpdatingReminders) return;
+    setIsUpdatingReminders(true);
+
+    try {
+      if (nextValue) {
+        const result = await scheduleTwiceDailyExpenseReminders();
+        if (!result.ok) {
+          setExpenseRemindersEnabled(false);
+          await AsyncStorage.setItem(EXPENSE_REMINDERS_STORAGE_KEY, JSON.stringify(false));
+          setModalConfig({
+            visible: true,
+            title: 'Expense Reminders Unavailable',
+            message: result.reason || 'Could not enable twice-daily expense reminders.',
+            confirmText: 'OK',
+            isDanger: false,
+            onConfirm: hideCustomModal,
+          });
+          return;
+        }
+
+        setExpenseRemindersEnabled(true);
+        await AsyncStorage.setItem(EXPENSE_REMINDERS_STORAGE_KEY, JSON.stringify(true));
+        setModalConfig({
+          visible: true,
+          title: 'Expense Reminders Active',
+          message: 'You will get expense tracking reminders twice a day at 1:00 PM and 8:30 PM.',
+          confirmText: 'OK',
+          isDanger: false,
+          onConfirm: hideCustomModal,
+        });
+      } else {
+        await cancelTwiceDailyExpenseReminders();
+        setExpenseRemindersEnabled(false);
+        await AsyncStorage.setItem(EXPENSE_REMINDERS_STORAGE_KEY, JSON.stringify(false));
+        setModalConfig({
+          visible: true,
+          title: 'Expense Reminders Paused',
+          message: 'Twice-daily expense tracking reminders have been turned off.',
+          confirmText: 'OK',
+          isDanger: false,
+          onConfirm: hideCustomModal,
+        });
+      }
+    } finally {
+      setIsUpdatingReminders(false);
+    }
+  };
+
+  const handleToggleAdviceReminders = async (nextValue) => {
+    if (isUpdatingReminders) return;
+    setIsUpdatingReminders(true);
+
+    try {
+      if (nextValue) {
+        const result = await scheduleDailyFinancialAdvice(9, 30);
+        if (!result.ok) {
+          setAdviceRemindersEnabled(false);
+          await AsyncStorage.setItem(ADVICE_REMINDERS_STORAGE_KEY, JSON.stringify(false));
+          setModalConfig({
+            visible: true,
+            title: 'Financial Advice Unavailable',
+            message: result.reason || 'Could not enable daily financial advice.',
+            confirmText: 'OK',
+            isDanger: false,
+            onConfirm: hideCustomModal,
+          });
+          return;
+        }
+
+        setAdviceRemindersEnabled(true);
+        await AsyncStorage.setItem(ADVICE_REMINDERS_STORAGE_KEY, JSON.stringify(true));
+        setModalConfig({
+          visible: true,
+          title: 'Daily Advice Active',
+          message: 'You will get a fresh financial tip once a day.',
+          confirmText: 'OK',
+          isDanger: false,
+          onConfirm: hideCustomModal,
+        });
+      } else {
+        await cancelDailyFinancialAdvice();
+        setAdviceRemindersEnabled(false);
+        await AsyncStorage.setItem(ADVICE_REMINDERS_STORAGE_KEY, JSON.stringify(false));
+        setModalConfig({
+          visible: true,
+          title: 'Daily Advice Paused',
+          message: 'Daily financial advice notifications have been turned off.',
+          confirmText: 'OK',
+          isDanger: false,
+          onConfirm: hideCustomModal,
+        });
+      }
+    } finally {
+      setIsUpdatingReminders(false);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    const result = await triggerTestSavingsNotification(5);
+    if (result.ok) {
+      setModalConfig({
+        visible: true,
+        title: 'Test Nudge Scheduled',
+        message: 'A savings reminder will arrive in 5 seconds—even if you close or minimize the app.',
+        confirmText: 'OK',
+        isDanger: false,
+        onConfirm: hideCustomModal,
+      });
+    } else {
+      setModalConfig({
+        visible: true,
+        title: 'Test Failed',
+        message: result.reason || 'Unable to trigger test notification.',
+        confirmText: 'OK',
+        isDanger: false,
+        onConfirm: hideCustomModal,
+      });
+    }
   };
 
   const handleExport = async () => {
@@ -262,6 +497,85 @@ export default function SettingsScreen({ onOpenCategoryManager }) {
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.subText} />
           </TouchableOpacity>
+        </View>
+
+        {/* --- SAVINGS REMINDERS SECTION (BELOW BACKUP & RESTORE) --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Savings Reminders</Text>
+
+          <View style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
+              <Ionicons name="notifications-outline" size={16} color={theme.primary} />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Bi-Monthly Payday Nudges</Text>
+              <Text style={[styles.actionSubtitle, { color: theme.subText }]}>
+                Remind me to save on the 1st & 16th.
+              </Text>
+            </View>
+            <Switch
+              value={paydayRemindersEnabled}
+              onValueChange={handleTogglePaydayReminders}
+              disabled={isUpdatingReminders}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+              <Ionicons name="receipt-outline" size={16} color="#3B82F6" />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Expense Tracking</Text>
+              <Text style={[styles.actionSubtitle, { color: theme.subText }]}>
+                Log expenses reminder.
+              </Text>
+            </View>
+            <Switch
+              value={expenseRemindersEnabled}
+              onValueChange={handleToggleExpenseReminders}
+              disabled={isUpdatingReminders}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(245, 158, 11, 0.14)' }]}>
+              <Ionicons name="bulb-outline" size={16} color="#F59E0B" />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Daily Financial Advice</Text>
+              <Text style={[styles.actionSubtitle, { color: theme.subText }]}>
+                Unique money tip once a day at 9:30 AM
+              </Text>
+            </View>
+            <Switch
+              value={adviceRemindersEnabled}
+              onValueChange={handleToggleAdviceReminders}
+              disabled={isUpdatingReminders}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          {/* <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.cardBg, borderColor: theme.border }]}
+            onPress={handleTestNotification}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+              <Ionicons name="timer-outline" size={16} color="#10B981" />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text style={[styles.actionTitle, { color: theme.text }]}>Send Test Savings Nudge (5s)</Text>
+              <Text style={[styles.actionSubtitle, { color: theme.subText }]}>
+                Verify local notification delivery in Expo Go or APK
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.subText} />
+          </TouchableOpacity> */}
         </View>
 
         {/* --- DANGER ZONE SECTION --- */}
