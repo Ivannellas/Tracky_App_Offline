@@ -1,5 +1,5 @@
 {
-  "versionCode": 9,
+  "versionCode": 10,
   "versionName": "1.0.8",
   "apkUrl": "https://github.com/Ivannellas/Tracky_App_Offline/releases/download/v1.0.8/trackly-v1.0.8.apk",
   "releaseNotes": "• Fixed transfer history timestamps to show accurate local time\n• Added default-on savings & expense reminders\n• Improved notification branding"

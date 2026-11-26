@@ -64,7 +64,7 @@ function MainAppContainer() {
         setCurrentVersion(result.currentVersion);
         setUpdateModalVisible(true);
       }
-    }, 3000);
+    }, 1500);
 
     return () => {
       isMounted = false;

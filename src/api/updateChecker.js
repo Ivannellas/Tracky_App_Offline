@@ -4,7 +4,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { Linking, Platform } from 'react-native';
 
 const VERSION_CHECK_URL =
-  'https://raw.githubusercontent.com/Ivannellas/Trackly_App_Offline/main/version.json';
+  'https://raw.githubusercontent.com/Ivannellas/Tracky_App_Offline/main/version.json';
 
 export function isUpdateCheckerConfigured() {
   return (
