@@ -2,7 +2,7 @@
   "expo": {
     "name": "Trackly",
     "slug": "tracklyV2",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "automatic",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.ivanrellas.tracklyoffline",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": [
         "REQUEST_INSTALL_PACKAGES"
       ],
