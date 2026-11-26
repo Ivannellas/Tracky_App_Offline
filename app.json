@@ -21,6 +21,9 @@
     "android": {
       "package": "com.ivanrellas.tracklyoffline",
       "versionCode": 8,
+      "permissions": [
+        "REQUEST_INSTALL_PACKAGES"
+      ],
       "softwareKeyboardLayoutMode": "resize",
       "splash": {
         "image": "./assets/logo.png",

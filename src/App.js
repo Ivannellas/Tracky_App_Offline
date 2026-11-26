@@ -2,8 +2,9 @@ import React, { useEffect, useState, useContext } from 'react';
 import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { initDatabase } from './api/sqLiteClient';
-import { checkForUpdates } from './api/updateChecker';
+import { fetchUpdateStatus } from './api/updateChecker';
 import { initNotificationHandler } from './utils/notifications';
+import UpdateModal from './components/UpdateModal';
 import DashboardScreen from './features/dashboard/screens/DashboardScreen';
 import RecurringBillsScreen from './features/transactions/screens/RecurringBillsScreen';
 import AnalyticsScreen from './features/analytics/screens/AnalyticsScreen';
@@ -49,12 +50,26 @@ function MainAppContainer() {
   const { theme } = useContext(ThemeContext);
   const { isLocked, isLoadingSecurity } = useContext(AuthContext);
 
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [currentVersion, setCurrentVersion] = useState(null);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      checkForUpdates(false);
+    let isMounted = true;
+
+    const timer = setTimeout(async () => {
+      const result = await fetchUpdateStatus();
+      if (isMounted && result.status === 'update-available') {
+        setUpdateInfo(result.remoteData);
+        setCurrentVersion(result.currentVersion);
+        setUpdateModalVisible(true);
+      }
     }, 3000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   if (isLoadingSecurity) {
@@ -136,6 +151,14 @@ function MainAppContainer() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Custom In-App Update Modal */}
+      <UpdateModal
+        visible={updateModalVisible}
+        updateInfo={updateInfo}
+        currentVersion={currentVersion}
+        onClose={() => setUpdateModalVisible(false)}
+      />
     </View>
   );
 }
